@@ -1,4 +1,5 @@
 import pandas as pd
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
@@ -9,20 +10,23 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from tqdm import tqdm
 import json
+import requests
+from time import sleep
+from random import randint
 from newspaper import Article
 
 CHROME_DRIVER_PATH = "/home/aci/Chrome Webdriver/chromedriver"
 SEARCH_TOPIC = "এসিআই"
 # link_PROTHOM_ALO = "https://www.prothomalo.com/"  #popup issues
-link_PROTHOM_ALO = "https://www.prothomalo.com/search?q="+SEARCH_TOPIC
+link_PROTHOM_ALO = "https://www.prothomalo.com/search?q=" + SEARCH_TOPIC
 link_inqilab = "https://www.dailyinqilab.com/"
 link_NTVBD = "https://www.ntvbd.com/"
-link_KALER_KONTHO = "http://www.kalerkantho.com/" #data not loading
-link_JUGANTOR = "http://www.jugantor.com/"        #data not loading
+link_KALER_KONTHO = "http://www.kalerkantho.com/"  # data not loading
+link_JUGANTOR = "http://www.jugantor.com/"  # data not loading
 # link_BHORER_KAGOJ = "http://www.bhorerkagoj.net/"
-link_BHORER_KAGOJ =  "https://www.bhorerkagoj.com/?s="+SEARCH_TOPIC
+link_BHORER_KAGOJ = "https://www.bhorerkagoj.com/?s=" + SEARCH_TOPIC
 
-link_JAYJAYDIN = "http://www.jaijaidinbd.com/"     #data not loading
+link_JAYJAYDIN = "http://www.jaijaidinbd.com/"  # data not loading
 link_MZAMIN = "http://www.mzamin.com/"
 link_DAILYSTAR = "http://www.thedailystar.net/"
 link_NAYADIGANTA = "http://www.dailynayadiganta.com/"
@@ -35,10 +39,10 @@ driver = webdriver.Chrome(ChromeDriverManager().install())
 driver.maximize_window()
 driver.delete_all_cookies()
 
-
-
 chrome_options = webdriver.ChromeOptions()
 chrome_options.add_argument("--disable-notifications")
+
+
 # webdriver.Chrome(os.path.join(path, 'chromedriver'),
 #                  chrome_options=chrome_options)
 
@@ -48,7 +52,8 @@ def search_ntv(home_link):
     driver.get(home_link)
     WebDriverWait(driver, 20).until(
         EC.element_to_be_clickable((By.XPATH, "//input[@class='search-input srch_keyword']"))).click()
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='search-input srch_keyword']"))).send_keys(SEARCH_TOPIC)
+    WebDriverWait(driver, 20).until(
+        EC.element_to_be_clickable((By.XPATH, "//input[@class='search-input srch_keyword']"))).send_keys(SEARCH_TOPIC)
     WebDriverWait(driver, 20).until(
         EC.element_to_be_clickable((By.XPATH, "//button[@class='search-button searchIcon  absolute']"))).click()
 
@@ -77,8 +82,11 @@ def search_ntv(home_link):
 def search_inqilab(home_link):
     print("\t INQILAB")
     driver.get(home_link)
-    WebDriverWait(driver, 20).until( EC.element_to_be_clickable((By.XPATH, "//input[@class='search-query form-control']"))).click()
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(SEARCH_TOPIC + Keys.RETURN)
+    WebDriverWait(driver, 20).until(
+        EC.element_to_be_clickable((By.XPATH, "//input[@class='search-query form-control']"))).click()
+    WebDriverWait(driver, 20).until(
+        EC.element_to_be_clickable((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(
+        SEARCH_TOPIC + Keys.RETURN)
     search_links = driver.find_elements(By.XPATH, "//div[@class='col-xs-12 col-sm-6']")
     texts = []
     links = []
@@ -96,15 +104,16 @@ def search_inqilab(home_link):
     return df
 
 
-
-
-
 def search_jugantor(home_link):
     print("\t JUGANTOR")
     driver.get(home_link)
-    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//i[@class='fas fa-search align-bottom']"))).click()
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).click()
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).send_keys(SEARCH_TOPIC+ Keys.RETURN)
+    WebDriverWait(driver, 5).until(
+        EC.element_to_be_clickable((By.XPATH, "//i[@class='fas fa-search align-bottom']"))).click()
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).click()
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).send_keys(
+        SEARCH_TOPIC + Keys.RETURN)
     # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='btn']"))).click()
     print("entering search results")
     try:
@@ -147,7 +156,7 @@ def search_bhorer_kagoj(home_link):
         print("Timed out!")
     # print(driver.find_elements(By.XPATH, "//a[@class='gs-title']"))
     # search_texts = driver.find_element(By.XPATH, "//h4[@class='title']")
-    search_links = driver.find_elements(By.XPATH,"//a[@class='col-sm-6 col-xs-12']")
+    search_links = driver.find_elements(By.XPATH, "//a[@class='col-sm-6 col-xs-12']")
     # search_links = driver.find_elements(By.XPATH, "//a[@dir='ltr']")
     # print(f"search links : {search_links}")
     texts = []
@@ -177,25 +186,36 @@ def test(home_link):
     print("\t KALER KANTHA")
     driver.get(home_link)
     WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//i[@class='fa fa-search']"))).click()
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).click()
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(SEARCH_TOPIC + Keys.RETURN)
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).click()
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(
+        SEARCH_TOPIC + Keys.RETURN)
     # print(driver.find_element_by_class_name('gs-title'))
     try:
         WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CLASS_NAME, "gs-title")))
         print("search results ready!!")
     except TimeoutException:
         print("Timed out!")
-    search_links = driver.find_elements(By.CLASS_NAME,"gs-title")
+    search_links = driver.find_elements(By.CLASS_NAME, "gs-title")
     for element in search_links:
         print(element.get_attribute('innerHTML'))
 
 
+def get_news_text(link,title_property, description_property):
+    sleep(randint(1, 3))
+    url = requests.get(link)
+    soup=BeautifulSoup(url.content,'html.parser')
+    title = soup.find("meta", property = title_property, content=True)
+    description = soup.find("meta", property=description_property ,content=True)
+    return [title['content'],description['content']]
 def search_mzamin(home_link):
     print("\t MZMIN")
     driver.get(home_link)
     WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//i[@class='bi bi-search']"))).click()
     WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='gsc-input']"))).click()
-    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='gsc-input']"))).send_keys(SEARCH_TOPIC + Keys.RETURN)
+    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='gsc-input']"))).send_keys(
+        SEARCH_TOPIC + Keys.RETURN)
     # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='btn']"))).click()
     print("entering search results")
     try:
@@ -218,7 +238,14 @@ def search_mzamin(home_link):
     df = pd.DataFrame(texts, columns=['Headlines'])
     df['links'] = links
     df = df.drop_duplicates(keep='first')
-    # df.dropna(inplace=True)
+    df.dropna(inplace=True)
+    headlines_and_texts = []
+    for link in tqdm(df['links']):
+        # details = []
+        # details.append(get_news_text(link, "og:title", "og:description"))
+        headlines_and_texts.append(get_news_text(link, "og:title", "og:description"))
+    df['headlines_and_texts'] = headlines_and_texts
+
     # driver.close()
     return df
 
@@ -226,9 +253,11 @@ def search_mzamin(home_link):
 def search_nayaDiganta(home_link):
     print("\t NAYA DIGANTA")
     driver.get(home_link)
-    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//i[@class='fa fa-search search-btn']"))).click()
+    WebDriverWait(driver, 5).until(
+        EC.element_to_be_clickable((By.XPATH, "//i[@class='fa fa-search search-btn']"))).click()
     WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='form-control']"))).click()
-    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='form-control']"))).send_keys(SEARCH_TOPIC + Keys.RETURN)
+    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='form-control']"))).send_keys(
+        SEARCH_TOPIC + Keys.RETURN)
     # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='btn']"))).click()
     print("entering search results")
     try:
@@ -261,8 +290,11 @@ def search_jayjaydin(home_link):
     print("\t JAYJAYDIN")
     driver.get(home_link)
     WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//i[@class='fa fa-search src-top']"))).click()
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//input[@class='bn-font srch_keyword form-control']"))).click()
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//input[@class='bn-font srch_keyword form-control']"))).send_keys(SEARCH_TOPIC+ Keys.RETURN)
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//input[@class='bn-font srch_keyword form-control']"))).click()
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//input[@class='bn-font srch_keyword form-control']"))).send_keys(
+        SEARCH_TOPIC + Keys.RETURN)
     # WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='bn-font srch_keyword form-control']"))).send_keys(SEARCH_TOPIC+ Keys.RETURN)
     # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='btn']"))).click()
     print("entering search results")
@@ -293,12 +325,16 @@ def search_jayjaydin(home_link):
     # df.dropna(inplace=True)
     return df
 
+
 def search_kaler_kontho(home_link):
     print("\t KALER KANTHA")
     driver.get(home_link)
     WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//i[@class='fa fa-search']"))).click()
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).click()
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(SEARCH_TOPIC+Keys.RETURN)
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).click()
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(
+        SEARCH_TOPIC + Keys.RETURN)
     # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//span[@class=' glyphicon glyphicon-search']"))).click()
     print("entering search results")
     # tqdm(driver.implicitly_wait(10))
@@ -317,13 +353,44 @@ def search_kaler_kontho(home_link):
     for element in search_links:
         links.append(element.get_attribute("href"))
         texts.append(element.get_attribute("innerHTML"))
-    #print(f"links:{links}")
+    # print(f"links:{links}")
     print(f"{len(texts)} search results found!!")
     df = pd.DataFrame(texts, columns=['Headlines'])
     df['links'] = links
     df = df.drop_duplicates(keep='first')
     # df.dropna(inplace=True)
     return df
+
+
+def news_extract_from_link(links, xpath):
+    headlines_and_texts = []
+    for link in tqdm(links):
+        # tqdm(print('\t\tGetting into search results...'))
+        # texts=[]
+        details = []
+        driver.get(link)
+        try:
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.XPATH, xpath)))
+            # print("search results ready!!")
+        except TimeoutException:
+            print("Timed out!")
+        web_sources = driver.find_elements(By.XPATH, xpath)
+        data = [web_source.get_attribute('innerHTML') for web_source in web_sources]
+        # print(type(data))
+        # print(len(data))
+        # print(type(data[1]))
+        for datum in data:
+            if 'articleBody' in json.loads(datum) and 'headline' in json.loads(datum):
+                # print(json.loads(datum)['articleBody'])
+                headline = json.loads(datum)['headline']
+                news_text = json.loads(datum)['articleBody']
+
+                # details{headline:news_text}
+                details.append(headline)
+                details.append(news_text)
+        headlines_and_texts.append(details)
+    return headlines_and_texts
 
 
 def search_prothom_alo(home_link):
@@ -341,7 +408,8 @@ def search_prothom_alo(home_link):
 
     # print("entering search results")
     try:
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, "//span[@class='tilte-no-link-parent']")))
+        WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.XPATH, "//span[@class='tilte-no-link-parent']")))
         print("search results ready!!")
     except TimeoutException:
         print("Timed out!")
@@ -362,7 +430,7 @@ def search_prothom_alo(home_link):
     df = pd.DataFrame(texts, columns=['Headlines'])
     df['links'] = links
     df = df.drop_duplicates(keep='first')
-    headlines_and_texts=[]
+    headlines_and_texts = []
     for link in tqdm(df['links']):
         # tqdm(print('\t\tGetting into search results...'))
         # texts=[]
@@ -374,7 +442,7 @@ def search_prothom_alo(home_link):
             # print("search results ready!!")
         except TimeoutException:
             print("Timed out!")
-        web_sources = driver.find_elements(By.XPATH,"//script[@type = 'application/ld+json']")
+        web_sources = driver.find_elements(By.XPATH, "//script[@type = 'application/ld+json']")
         data = [web_source.get_attribute('innerHTML') for web_source in web_sources]
         # print(type(data))
         # print(len(data))
@@ -403,15 +471,12 @@ def search_prothom_alo(home_link):
     return df
 
 
-
-
 if __name__ == '__main__':
-
     # kk_df = search_kaler_kontho(link_KALER_KONTHO)
     # test_df = test(link_KALER_KONTHO)
     # jjd_df=  search_jayjaydin(link_JAYJAYDIN)
-    PA_df = search_prothom_alo(link_PROTHOM_ALO)
-    # mzmin_df = search_mzamin(link_MZAMIN)
+    # PA_df = search_prothom_alo(link_PROTHOM_ALO)
+    mzmin_df = search_mzamin(link_MZAMIN)
     # ntv_df = search_ntv(link_NTVBD)
     # nayaDiganta_df = search_nayaDiganta(link_NAYADIGANTA)
     # jugantor_df = search_jugantor(link_JUGANTOR)
@@ -423,12 +488,12 @@ if __name__ == '__main__':
 
     #
     # print(inqilab_df)
-    print(PA_df)
-    try:
-        tqdm(PA_df.to_csv("prothom-alo-scrapped-data.csv",index=False))
-        print("\t\tsaved data successfully!!")
-    except:
-        print('Failed to save')
+    print(mzmin_df)
+    # try:
+    #     tqdm(PA_df.to_csv("prothom-alo-scrapped-data.csv",index=False))
+    #     print("\t\tsaved data successfully!!")
+    # except:
+    #     print('Failed to save')
     # print(mzmin_df)
     # print(nayaDiganta_df)
     # print(ntv_df)
@@ -438,5 +503,3 @@ if __name__ == '__main__':
     # print(kk_df)
     # print(test_df)
     # print(jjd_df)
-
-
