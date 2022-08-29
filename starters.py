@@ -489,11 +489,11 @@ if __name__ == '__main__':
     #
     # print(inqilab_df)
     print(mzmin_df)
-    # try:
-    #     tqdm(PA_df.to_csv("prothom-alo-scrapped-data.csv",index=False))
-    #     print("\t\tsaved data successfully!!")
-    # except:
-    #     print('Failed to save')
+    try:
+        mzmin_df.to_csv("mzamin-scrapped-data.csv",index=False)
+        print("\t\tsaved data successfully!!")
+    except:
+        print('Failed to save')
     # print(mzmin_df)
     # print(nayaDiganta_df)
     # print(ntv_df)
