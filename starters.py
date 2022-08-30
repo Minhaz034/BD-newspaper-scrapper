@@ -14,6 +14,7 @@ import json
 import requests
 from time import sleep
 from random import randint
+import urllib.request
 from newspaper import Article
 
 
@@ -26,7 +27,7 @@ link_inqilab = "https://www.dailyinqilab.com/"
 link_NTVBD = "https://www.ntvbd.com/search/google?s="+SEARCH_TOPIC
 
 link_KALER_KONTHO = "http://www.kalerkantho.com/"  # data not loading
-link_JUGANTOR = "http://www.jugantor.com/"  # data not loading
+link_JUGANTOR = "https://www.jugantor.com/search/google?q="+SEARCH_TOPIC  # data not loading
 # link_BHORER_KAGOJ = "http://www.bhorerkagoj.net/"
 link_BHORER_KAGOJ = "https://www.bhorerkagoj.com/?s=" + SEARCH_TOPIC
 
@@ -141,13 +142,13 @@ def search_inqilab(home_link):
 def search_jugantor(home_link):
     print("\t JUGANTOR")
     driver.get(home_link)
-    WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.XPATH, "//i[@class='fas fa-search align-bottom']"))).click()
-    WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).click()
-    WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).send_keys(
-        SEARCH_TOPIC + Keys.RETURN)
+    # WebDriverWait(driver, 5).until(
+    #     EC.element_to_be_clickable((By.XPATH, "//i[@class='fas fa-search align-bottom']"))).click()
+    # WebDriverWait(driver, 5).until(
+    #     EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).click()
+    # WebDriverWait(driver, 5).until(
+    #     EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).send_keys(
+    #     SEARCH_TOPIC + Keys.RETURN)
     # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='btn']"))).click()
     print("entering search results")
     try:
@@ -170,6 +171,16 @@ def search_jugantor(home_link):
     df = pd.DataFrame(texts, columns=['Headlines'])
     df['links'] = links
     df = df.drop_duplicates(keep='first')
+    df.dropna(inplace=True)
+    descriptions = []
+    for link in tqdm(df['links']):
+        html = urllib.request.urlopen(str(link))
+        htmlParse = BeautifulSoup(html, 'html.parser')
+        texts = ""
+        for para in htmlParse.find_all("p"):
+            texts += para.get_text()
+        descriptions.append(texts[int(len(texts)/2):])
+    df['Descriptions'] = descriptions
     # df.dropna(inplace=True)
     # driver.close()
     return df
@@ -512,8 +523,8 @@ if __name__ == '__main__':
     # PA_df = search_prothom_alo(link_PROTHOM_ALO)
     # mzmin_df = search_mzamin(link_MZAMIN)
     # ntv_df = search_ntv(link_NTVBD)
-    nayaDiganta_df = search_nayaDiganta(link_NAYADIGANTA)
-    # jugantor_df = search_jugantor(link_JUGANTOR)
+    # nayaDiganta_df = search_nayaDiganta(link_NAYADIGANTA)
+    jugantor_df = search_jugantor(link_JUGANTOR)
 
     # bhorer_kagoj_df = search_bhorer_kagoj(link_BHORER_KAGOJ)
     # inqilab_df = search_inqilab(link_inqilab)
@@ -523,9 +534,9 @@ if __name__ == '__main__':
     #
     # print(inqilab_df)
     # print(mzmin_df)
-    print(nayaDiganta_df)
+    print(jugantor_df)
     try:
-        nayaDiganta_df.to_csv("naya-diganta-scrapped-data.csv",index=False)
+        jugantor_df.to_csv("jugantor-scrapped-data.csv",index=False)
         print("\t\tsaved data successfully!!")
     except:
         print('Failed to save')
