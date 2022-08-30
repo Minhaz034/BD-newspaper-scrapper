@@ -24,6 +24,7 @@ SEARCH_TOPIC = "এসিআই"
 # link_PROTHOM_ALO = "https://www.prothomalo.com/"  #popup issues
 link_PROTHOM_ALO = "https://www.prothomalo.com/search?q=" + SEARCH_TOPIC
 link_inqilab = "https://www.dailyinqilab.com/"
+
 link_NTVBD = "https://www.ntvbd.com/search/google?s="+SEARCH_TOPIC
 
 link_KALER_KONTHO = "http://www.kalerkantho.com/"  # data not loading
@@ -108,9 +109,6 @@ def search_ntv(home_link):
         if len(data)>0:
             headlines_and_texts.append(get_news_text(link, "og:title", "og:description"))
     df['headlines_and_texts'] = headlines_and_texts
-
-
-    # driver.close()
     return df
 
 
@@ -123,16 +121,22 @@ def search_inqilab(home_link):
         EC.element_to_be_clickable((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(
         SEARCH_TOPIC + Keys.RETURN)
     search_links = driver.find_elements(By.XPATH, "//div[@class='col-xs-12 col-sm-6']")
+    # search_links = driver.find_elements(By.TAG_NAME,'a')
+    print(search_links)
     texts = []
     links = []
+    miscs = []
     for element in search_links:
         links.append(element.get_attribute("href"))
-        texts.append(element.get_attribute("innerHTML").strip())
+        texts.append(element.get_attribute("innerHTML"))
+        # miscs.append(element.get_attribute(("outerHTML")))
+
         # texts.append(element.get_text())
-    print(f"{len(texts)} search results found!!")
-    # print(texts)
+    print(f"{len(links)} search results found!!")
+    print(type(texts[0]))
     df = pd.DataFrame(texts, columns=['Headlines'])
     df['links'] = links
+    # df['Minsc'] = miscs
     df = df.drop_duplicates(keep='first')
     # df.dropna(inplace=True)
     # driver.close()
@@ -517,26 +521,31 @@ def search_prothom_alo(home_link):
 
 
 if __name__ == '__main__':
-    # kk_df = search_kaler_kontho(link_KALER_KONTHO)
+
     # test_df = test(link_KALER_KONTHO)
-    # jjd_df=  search_jayjaydin(link_JAYJAYDIN)
+
     # PA_df = search_prothom_alo(link_PROTHOM_ALO)
     # mzmin_df = search_mzamin(link_MZAMIN)
     # ntv_df = search_ntv(link_NTVBD)
     # nayaDiganta_df = search_nayaDiganta(link_NAYADIGANTA)
-    jugantor_df = search_jugantor(link_JUGANTOR)
+    # jugantor_df = search_jugantor(link_JUGANTOR)
 
+
+    #In progress:
+    inqilab_df = search_inqilab(link_inqilab)
+    # jjd_df=  search_jayjaydin(link_JAYJAYDIN)
+    # kk_df = search_kaler_kontho(link_KALER_KONTHO)
     # bhorer_kagoj_df = search_bhorer_kagoj(link_BHORER_KAGOJ)
-    # inqilab_df = search_inqilab(link_inqilab)
+
     driver.close()
     print("\t\tnews search results:")
 
     #
     # print(inqilab_df)
     # print(mzmin_df)
-    print(jugantor_df)
+    print(inqilab_df)
     try:
-        jugantor_df.to_csv("jugantor-scrapped-data.csv",index=False)
+        inqilab_df.to_csv("inqilab-scrapped-data.csv",index=False)
         print("\t\tsaved data successfully!!")
     except:
         print('Failed to save')
