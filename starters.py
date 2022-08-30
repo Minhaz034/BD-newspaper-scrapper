@@ -5,6 +5,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
@@ -15,12 +16,15 @@ from time import sleep
 from random import randint
 from newspaper import Article
 
+
+
 CHROME_DRIVER_PATH = "/home/aci/Chrome Webdriver/chromedriver"
 SEARCH_TOPIC = "এসিআই"
 # link_PROTHOM_ALO = "https://www.prothomalo.com/"  #popup issues
 link_PROTHOM_ALO = "https://www.prothomalo.com/search?q=" + SEARCH_TOPIC
 link_inqilab = "https://www.dailyinqilab.com/"
-link_NTVBD = "https://www.ntvbd.com/"
+link_NTVBD = "https://www.ntvbd.com/search/google?s="+SEARCH_TOPIC
+
 link_KALER_KONTHO = "http://www.kalerkantho.com/"  # data not loading
 link_JUGANTOR = "http://www.jugantor.com/"  # data not loading
 # link_BHORER_KAGOJ = "http://www.bhorerkagoj.net/"
@@ -29,33 +33,52 @@ link_BHORER_KAGOJ = "https://www.bhorerkagoj.com/?s=" + SEARCH_TOPIC
 link_JAYJAYDIN = "http://www.jaijaidinbd.com/"  # data not loading
 link_MZAMIN = "http://www.mzamin.com/"
 link_DAILYSTAR = "http://www.thedailystar.net/"
-link_NAYADIGANTA = "http://www.dailynayadiganta.com/"
+link_NAYADIGANTA = "https://www.dailynayadiganta.com/search?q="+SEARCH_TOPIC
 
 # driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-s = Service()
-# driver = webdriver.Chrome(Service(CHROME_DRIVER_PATH))
-driver = webdriver.Chrome(ChromeDriverManager().install())
+#s = Service()
+options = Options()
+options.headless = True
+options.add_argument("--window-size=1920,1200")
+# chrome_options = webdriver.ChromeOptions()
+# chrome_prefs = {
+#     "profile.default_content_setting_values": {
+#         "images": 2,
+#         "javascript": 2,
+#     }
+# }
+# chrome_options.experimental_options["prefs"] = chrome_prefs
+#
+# chrome_options.add_argument("--disable-notifications")
+driver = webdriver.Chrome(options = options,executable_path= CHROME_DRIVER_PATH)
+#driver = webdriver.Chrome(ChromeDriverManager().install())
 
 driver.maximize_window()
 driver.delete_all_cookies()
 
-chrome_options = webdriver.ChromeOptions()
-chrome_options.add_argument("--disable-notifications")
 
-
-# webdriver.Chrome(os.path.join(path, 'chromedriver'),
-#                  chrome_options=chrome_options)
+def get_news_text(link,title_property, description_property):
+    sleep(randint(1, 3))
+    url = requests.get(link)
+    soup=BeautifulSoup(url.content,'html.parser')
+    try:
+        title = soup.find("meta", property = title_property, content=True)
+        description = soup.find("meta", property=description_property ,content=True)
+        # print(f"title:{title}\nDescription:{description}")
+        return [title['content'], description['content']]
+    except:
+        print("element not found")
 
 
 def search_ntv(home_link):
     print("\t NTVBD")
     driver.get(home_link)
-    WebDriverWait(driver, 20).until(
-        EC.element_to_be_clickable((By.XPATH, "//input[@class='search-input srch_keyword']"))).click()
-    WebDriverWait(driver, 20).until(
-        EC.element_to_be_clickable((By.XPATH, "//input[@class='search-input srch_keyword']"))).send_keys(SEARCH_TOPIC)
-    WebDriverWait(driver, 20).until(
-        EC.element_to_be_clickable((By.XPATH, "//button[@class='search-button searchIcon  absolute']"))).click()
+    # WebDriverWait(driver, 20).until(
+    #     EC.element_to_be_clickable((By.XPATH, "//input[@class='search-input srch_keyword']"))).click()
+    # WebDriverWait(driver, 20).until(
+    #     EC.element_to_be_clickable((By.XPATH, "//input[@class='search-input srch_keyword']"))).send_keys(SEARCH_TOPIC)
+    # WebDriverWait(driver, 20).until(
+    #     EC.element_to_be_clickable((By.XPATH, "//button[@class='search-button searchIcon  absolute']"))).click()
 
     try:
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//a[@class='gs-title']")))
@@ -75,6 +98,17 @@ def search_ntv(home_link):
     df['links'] = links
     df = df.drop_duplicates(keep='first')
     df.dropna(inplace=True)
+    headlines_and_texts = []
+    for link in tqdm(df['links']):
+        # details = []
+        # details.append(get_news_text(link, "og:title", "og:description"))
+        # print(get_news_text(link, "og:title", "og:description"))
+        data = get_news_text(link, "og:title", "og:description")
+        if len(data)>0:
+            headlines_and_texts.append(get_news_text(link, "og:title", "og:description"))
+    df['headlines_and_texts'] = headlines_and_texts
+
+
     # driver.close()
     return df
 
@@ -202,13 +236,7 @@ def test(home_link):
         print(element.get_attribute('innerHTML'))
 
 
-def get_news_text(link,title_property, description_property):
-    sleep(randint(1, 3))
-    url = requests.get(link)
-    soup=BeautifulSoup(url.content,'html.parser')
-    title = soup.find("meta", property = title_property, content=True)
-    description = soup.find("meta", property=description_property ,content=True)
-    return [title['content'],description['content']]
+
 def search_mzamin(home_link):
     print("\t MZMIN")
     driver.get(home_link)
@@ -253,11 +281,11 @@ def search_mzamin(home_link):
 def search_nayaDiganta(home_link):
     print("\t NAYA DIGANTA")
     driver.get(home_link)
-    WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.XPATH, "//i[@class='fa fa-search search-btn']"))).click()
-    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='form-control']"))).click()
-    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='form-control']"))).send_keys(
-        SEARCH_TOPIC + Keys.RETURN)
+    # WebDriverWait(driver, 5).until(
+    #     EC.element_to_be_clickable((By.XPATH, "//i[@class='fa fa-search search-btn']"))).click()
+    # WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='form-control']"))).click()
+    # WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='form-control']"))).send_keys(
+    #     SEARCH_TOPIC + Keys.RETURN)
     # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='btn']"))).click()
     print("entering search results")
     try:
@@ -281,7 +309,13 @@ def search_nayaDiganta(home_link):
     df = pd.DataFrame(texts, columns=['Headlines'])
     df['links'] = links
     df = df.drop_duplicates(keep='first')
-    # df.dropna(inplace=True)
+    df.dropna(inplace=True)
+    headlines_and_texts = []
+    for link in tqdm(df['links']):
+        data = get_news_text(link, "og:title", "og:description")
+        if len(data)>0:
+            headlines_and_texts.append(get_news_text(link, "og:title", "og:description"))
+    df['headlines_and_texts'] = headlines_and_texts
     # driver.close()
     return df
 
@@ -476,9 +510,9 @@ if __name__ == '__main__':
     # test_df = test(link_KALER_KONTHO)
     # jjd_df=  search_jayjaydin(link_JAYJAYDIN)
     # PA_df = search_prothom_alo(link_PROTHOM_ALO)
-    mzmin_df = search_mzamin(link_MZAMIN)
+    # mzmin_df = search_mzamin(link_MZAMIN)
     # ntv_df = search_ntv(link_NTVBD)
-    # nayaDiganta_df = search_nayaDiganta(link_NAYADIGANTA)
+    nayaDiganta_df = search_nayaDiganta(link_NAYADIGANTA)
     # jugantor_df = search_jugantor(link_JUGANTOR)
 
     # bhorer_kagoj_df = search_bhorer_kagoj(link_BHORER_KAGOJ)
@@ -488,9 +522,10 @@ if __name__ == '__main__':
 
     #
     # print(inqilab_df)
-    print(mzmin_df)
+    # print(mzmin_df)
+    print(nayaDiganta_df)
     try:
-        mzmin_df.to_csv("mzamin-scrapped-data.csv",index=False)
+        nayaDiganta_df.to_csv("naya-diganta-scrapped-data.csv",index=False)
         print("\t\tsaved data successfully!!")
     except:
         print('Failed to save')
