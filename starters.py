@@ -15,6 +15,7 @@ import requests
 from time import sleep
 from random import randint
 import urllib.request
+import re
 from newspaper import Article
 
 
@@ -121,24 +122,30 @@ def search_inqilab(home_link):
         EC.element_to_be_clickable((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(
         SEARCH_TOPIC + Keys.RETURN)
     search_links = driver.find_elements(By.XPATH, "//div[@class='col-xs-12 col-sm-6']")
-    # search_links = driver.find_elements(By.TAG_NAME,'a')
-    print(search_links)
-    texts = []
-    links = []
-    miscs = []
+    divs = []
     for element in search_links:
-        links.append(element.get_attribute("href"))
-        texts.append(element.get_attribute("innerHTML"))
+        # links.append(element.get_attribute("href"))
+        divs.append(element.get_attribute("innerHTML"))
         # miscs.append(element.get_attribute(("outerHTML")))
 
         # texts.append(element.get_text())
-    print(f"{len(links)} search results found!!")
-    print(type(texts[0]))
-    df = pd.DataFrame(texts, columns=['Headlines'])
-    df['links'] = links
+    print(f"{len(divs)} search results found!!")
+    # print(type(texts[0]))
+    # df = pd.DataFrame(texts, columns=['Headlines'])
+    # df['links'] = links
+    headlines = []
+    urls = []
+    for data in divs:
+        url = re.findall("href=\"[^\n]+\" ", data)[0].replace("href=", "")
+        headline = re.findall("<h2>[^\n]+</h2>",data)[0]
+        urls.append(url)
+        headlines.append(headline)
     # df['Minsc'] = miscs
+    # df["Urls"]  = urls
+    df = pd.DataFrame(headlines,columns=['Headlines'])
+    df['links'] = urls
     df = df.drop_duplicates(keep='first')
-    # df.dropna(inplace=True)
+    df.dropna(inplace=True)
     # driver.close()
     return df
 
