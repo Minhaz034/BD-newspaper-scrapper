@@ -146,6 +146,22 @@ def search_inqilab(home_link):
     df['links'] = urls
     df = df.drop_duplicates(keep='first')
     df.dropna(inplace=True)
+    texts = []
+    for link in tqdm(df['links']):
+        details = []
+        # print(link)
+        driver.get(link.replace("\"",""))
+        try:
+            web_sources = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH,"//div[@class='col-xs-12 col-sm-12']//following::p[1]"))).get_attribute('innerHTML')
+            # WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, "//div[@id = 'application/ld+json']")))
+            # print("search results ready!!")
+        except TimeoutException:
+            print("Timed out!")
+        texts.append(web_sources)
+        # print(web_sources)
+        # web_sources = driver.find_elements(By.XPATH, "//script[@type = 'application/ld+json']")
+        # data = [web_source.get_attribute('innerHTML') for web_source in web_sources]
+    df['texts'] = texts
     # driver.close()
     return df
 
@@ -553,7 +569,7 @@ if __name__ == '__main__':
     print(inqilab_df)
     try:
         inqilab_df.to_csv("inqilab-scrapped-data.csv",index=False)
-        print("\t\tsaved data successfully!!")
+        print("\t\tDATA SAVED SUCCESSFULLY!!")
     except:
         print('Failed to save')
     # print(mzmin_df)
@@ -565,3 +581,5 @@ if __name__ == '__main__':
     # print(kk_df)
     # print(test_df)
     # print(jjd_df)
+
+
