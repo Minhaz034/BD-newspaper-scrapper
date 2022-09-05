@@ -2,13 +2,15 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+# from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+import chromedriver_autoinstaller
+import chromedriver_binary
 from tqdm import tqdm
 import json
 import requests
@@ -16,11 +18,13 @@ from time import sleep
 from random import randint
 import urllib.request
 import re
-from newspaper import Article
+import time
+# from newspaper import Article
+
+chromedriver_autoinstaller.install()
 
 
-
-CHROME_DRIVER_PATH = "/home/aci/Chrome Webdriver/chromedriver"
+# CHROME_DRIVER_PATH = "/home/aci/Chrome Webdriver/chromedriver"
 SEARCH_TOPIC = "এসিআই"
 # link_PROTHOM_ALO = "https://www.prothomalo.com/"  #popup issues
 link_PROTHOM_ALO = "https://www.prothomalo.com/search?q=" + SEARCH_TOPIC
@@ -33,7 +37,9 @@ link_JUGANTOR = "https://www.jugantor.com/search/google?q="+SEARCH_TOPIC  # data
 # link_BHORER_KAGOJ = "http://www.bhorerkagoj.net/"
 link_BHORER_KAGOJ = "https://www.bhorerkagoj.com/?s=" + SEARCH_TOPIC
 
-link_JAYJAYDIN = "http://www.jaijaidinbd.com/"  # data not loading
+
+link_JAYJAYDIN = 'https://www.jaijaidinbd.com/search/google/?q=' + SEARCH_TOPIC + '&cx=partner-pub-5450504941871955%3A3787426415&cof=FORID%3A10&ie=UTF-8&sa=Search&sort=date'
+  # data not loading
 link_MZAMIN = "http://www.mzamin.com/"
 link_DAILYSTAR = "http://www.thedailystar.net/"
 link_NAYADIGANTA = "https://www.dailynayadiganta.com/search?q="+SEARCH_TOPIC
@@ -53,7 +59,8 @@ options.add_argument("--window-size=1920,1200")
 # chrome_options.experimental_options["prefs"] = chrome_prefs
 #
 # chrome_options.add_argument("--disable-notifications")
-driver = webdriver.Chrome(options = options,executable_path= CHROME_DRIVER_PATH)
+# driver = webdriver.Chrome(options = options,executable_path= CHROME_DRIVER_PATH)
+driver = webdriver.Chrome()
 #driver = webdriver.Chrome(ChromeDriverManager().install())
 
 driver.maximize_window()
@@ -252,6 +259,63 @@ def search_bhorer_kagoj(home_link):
     # df.dropna(inplace=True)
     return df
 
+def search_daily_star(home_link):
+    aci_search = home_link+'/search?t=ACI#gsc.tab=0&gsc.q=ACI&gsc.page='
+
+    page_no = 1
+    scrap_df = []
+
+    driver.get(aci_search+str(page_no))
+    pages = len(driver.find_elements(By.CLASS_NAME, "gsc-cursor-page"))
+
+    t0 = time.time()
+    while page_no <= pages:
+        page_no += 1
+
+        for i in range(1, 11):
+
+            try:
+                link = driver.find_element(By.XPATH,
+                                           '//*[@class="gsc-wrapper"]/div/div[1]/div/div/div[' + str(
+                                               i) + ']/div/div/div/a')
+            except:
+                link = WebDriverWait(driver, 10).until(EC.presence_of_element_located(
+                    (By.XPATH, '//*[@class="gsc-wrapper"]/div/div[1]/div/div/div[' + str(i) + ']/div/div/div/a')))
+
+            link_soup = link.get_attribute('data-ctorig')
+            soup = BeautifulSoup(requests.get(link_soup).text, "lxml")
+
+            try:
+                headline = soup.find('h1').text.strip()
+            except:
+                headline = link.text.strip()
+                print(f"Headline not accessible from page: {headline}")
+
+            try:
+                description = soup.find('div', {"class":re.compile(r'^section-content')}).text.strip()
+            except:
+                print(f"Description not accessible from page or irregular page.")
+                try:
+                    texts = soup.findAll('p', text=True)
+                    description = ''
+                    for text in texts:
+                        description+=text.text + " "
+                except:
+                    print('Text not accessible even after exception handling')
+
+
+            scrap_df.append({
+
+                'headlines'   : headline,
+                'links'       : link_soup,
+                'description' : description
+            })
+        driver.get(aci_search+str(page_no))
+    scrap_df = pd.DataFrame(scrap_df)
+
+    t1 = time.time()
+    print(f"Time required: {t1-t0:0.3f}")
+    return scrap_df
 
 def test(home_link):
     driver.get(home_link)
@@ -542,6 +606,40 @@ def search_prothom_alo(home_link):
     # df.dropna(inplace=True)
     return df
 
+def search_JayJayDin(search_link):
+
+    driver.get(search_link)
+    soup = BeautifulSoup(driver.page_source,features="lxml")
+    for el in soup.find_all('div',attrs={"id":"cse-search-results"}):
+        li=el.find('iframe',attrs={"name":"googleSearchFrame"})
+        driver.get(li['src'])
+        time.sleep(2)
+        soup1 = BeautifulSoup(driver.page_source,features="lxml")
+        a=soup1.find_all("a",{"class":"gs-title"})
+    i=0
+    headline = []
+    links = []
+    contents = []
+    while i<20:
+        time.sleep(2)
+        driver.get(a[i]['data-cturl'])
+        news_page=BeautifulSoup(driver.page_source,features="lxml")
+        news_header=news_page.find_all('div',attrs={"id":"dtl_hl_block"})
+        heading=news_header[0].get_text()
+        news_content=news_page.find_all('div',attrs={"id":"dtl_content_block"})
+        content=news_content[0].get_text()
+        links.append(a[i]['data-cturl'])
+        headline.append(heading)
+        contents.append(content)
+        print(f"{len(headline)} search results found!!")
+        df = pd.DataFrame(headline, columns=['Headlines'])
+        df['Links'] = links
+        df = df.drop_duplicates(keep='first')
+        df.dropna(inplace=True)
+        df['News_content'] = contents
+        i=i+2
+    return df
+
 
 if __name__ == '__main__':
 
@@ -555,23 +653,26 @@ if __name__ == '__main__':
 
 
     #In progress:
-    inqilab_df = search_inqilab(link_inqilab)
-    # jjd_df=  search_jayjaydin(link_JAYJAYDIN)
+    # inqilab_df = search_inqilab(link_inqilab)
+    # daily_star_df = search_daily_star(link_DAILYSTAR)
+    jjd_df = search_JayJayDin(link_JAYJAYDIN)
     # kk_df = search_kaler_kontho(link_KALER_KONTHO)
     # bhorer_kagoj_df = search_bhorer_kagoj(link_BHORER_KAGOJ)
 
     driver.close()
-    print("\t\tnews search results:")
+    print("\t\tNews search results:")
 
     #
     # print(inqilab_df)
     # print(mzmin_df)
-    print(inqilab_df)
-    try:
-        inqilab_df.to_csv("inqilab-scrapped-data.csv",index=False)
-        print("\t\tDATA SAVED SUCCESSFULLY!!")
-    except:
-        print('Failed to save')
+    # print(inqilab_df)
+    print(jjd_df)
+
+    # try:
+    #     daily_star_df.to_csv("daily-star-scrapped-data.csv", index=False)
+    #     print("\t\tDATA SAVED SUCCESSFULLY!!")
+    # except:
+    #     print('Failed to save')
     # print(mzmin_df)
     # print(nayaDiganta_df)
     # print(ntv_df)
