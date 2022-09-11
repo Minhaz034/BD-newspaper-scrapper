@@ -20,7 +20,7 @@ import urllib.request
 import re
 import time
 # from newspaper import Article
-
+import numpy as np
 chromedriver_autoinstaller.install()
 
 
@@ -32,7 +32,7 @@ link_inqilab = "https://www.dailyinqilab.com/"
 
 link_NTVBD = "https://www.ntvbd.com/search/google?s="+SEARCH_TOPIC
 
-link_KALER_KONTHO = "http://www.kalerkantho.com/"  # data not loading
+link_KALER_KONTHO = "http://www.kalerkantho.com/" + "home/search?cx=partner-pub-0600503450204720%3A2337922458&cof=FORID%3A10&ie=UTF-8&q=" + SEARCH_TOPIC # data not loading
 link_JUGANTOR = "https://www.jugantor.com/search/google?q="+SEARCH_TOPIC  # data not loading
 # link_BHORER_KAGOJ = "http://www.bhorerkagoj.net/"
 link_BHORER_KAGOJ = "https://www.bhorerkagoj.com/?s=" + SEARCH_TOPIC
@@ -463,39 +463,73 @@ def search_jayjaydin(home_link):
 
 
 def search_kaler_kontho(home_link):
-    print("\t KALER KANTHA")
-    driver.get(home_link)
-    WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//i[@class='fa fa-search']"))).click()
-    WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).click()
-    WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(
-        SEARCH_TOPIC + Keys.RETURN)
-    # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//span[@class=' glyphicon glyphicon-search']"))).click()
-    print("entering search results")
-    # tqdm(driver.implicitly_wait(10))
-    try:
-        tqdm(WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//a[@class='gs-title']"))))
-        print("search results ready!!\n Scrapping Search results:")
 
-    except TimeoutException:
-        print("Timed out!")
-    search_links = driver.find_elements(By.XPATH, "//a[@class='gs-title']")
-    print(search_links)
-    # search_links = driver.find_elements(By.XPATH, "//a[@dir='ltr']")
-    # print(f"search links : {search_links}")
-    texts = []
-    links = []
-    for element in search_links:
-        links.append(element.get_attribute("href"))
-        texts.append(element.get_attribute("innerHTML"))
-    # print(f"links:{links}")
-    print(f"{len(texts)} search results found!!")
-    df = pd.DataFrame(texts, columns=['Headlines'])
-    df['links'] = links
-    df = df.drop_duplicates(keep='first')
-    # df.dropna(inplace=True)
+    scrap_df = []
+
+    driver.get(home_link)
+    gsc_link = driver.find_elements(By.XPATH, "//iframe[@name='googleSearchFrame']")
+    driver.get(gsc_link[0].get_attribute('src'))
+    links = driver.find_elements(By.XPATH, "//div[@class='gs-title']/a[@class ='gs-title']")
+    for link in links[:-1]:
+        page_source = requests.get(link.get_attribute('data-ctorig')).text
+        soup = BeautifulSoup(page_source, "lxml")
+
+        content_parent = soup.find('div', {'class': 'some-class-name2'})
+        contents = content_parent.findAll('p', attrs={'style': None})
+
+        headline = content_parent.findPrevious('h2').text.strip()
+
+        link_text = link.get_attribute('data-ctorig')
+        txt = ''
+        for content in contents:
+            txt += content.text
+
+        scrap_df.append({
+
+            'headlines': headline,
+            'links': link_text,
+            'description': txt
+        })
+
+    df = pd.DataFrame(scrap_df)
+
     return df
+
+
+# def search_kaler_kontho(home_link):
+#     print("\t KALER KANTHA")
+#     driver.get(home_link)
+#     WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//i[@class='fa fa-search']"))).click()
+#     WebDriverWait(driver, 5).until(
+#         EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).click()
+#     WebDriverWait(driver, 5).until(
+#         EC.presence_of_element_located((By.XPATH, "//input[@class='search-query form-control']"))).send_keys(
+#         SEARCH_TOPIC + Keys.RETURN)
+#     # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//span[@class=' glyphicon glyphicon-search']"))).click()
+#     print("entering search results")
+#     # tqdm(driver.implicitly_wait(10))
+#     try:
+#         tqdm(WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//a[@class='gs-title']"))))
+#         print("search results ready!!\n Scrapping Search results:")
+#
+#     except TimeoutException:
+#         print("Timed out!")
+#     search_links = driver.find_elements(By.XPATH, "//a[@class='gs-title']")
+#     print(search_links)
+#     # search_links = driver.find_elements(By.XPATH, "//a[@dir='ltr']")
+#     # print(f"search links : {search_links}")
+#     texts = []
+#     links = []
+#     for element in search_links:
+#         links.append(element.get_attribute("href"))
+#         texts.append(element.get_attribute("innerHTML"))
+#     # print(f"links:{links}")
+#     print(f"{len(texts)} search results found!!")
+#     df = pd.DataFrame(texts, columns=['Headlines'])
+#     df['links'] = links
+#     df = df.drop_duplicates(keep='first')
+#     # df.dropna(inplace=True)
+#     return df
 
 
 def news_extract_from_link(links, xpath):
@@ -655,10 +689,10 @@ if __name__ == '__main__':
     #In progress:
     # inqilab_df = search_inqilab(link_inqilab)
     # daily_star_df = search_daily_star(link_DAILYSTAR)
-    jjd_df = search_JayJayDin(link_JAYJAYDIN)
-    # kk_df = search_kaler_kontho(link_KALER_KONTHO)
+    # jjd_df = search_JayJayDin(link_JAYJAYDIN)
+    kk_df = search_kaler_kontho(link_KALER_KONTHO)
     # bhorer_kagoj_df = search_bhorer_kagoj(link_BHORER_KAGOJ)
-
+    print("Completed")
     driver.close()
     print("\t\tNews search results:")
 
@@ -666,7 +700,7 @@ if __name__ == '__main__':
     # print(inqilab_df)
     # print(mzmin_df)
     # print(inqilab_df)
-    print(jjd_df)
+    print(kk_df)
 
     # try:
     #     daily_star_df.to_csv("daily-star-scrapped-data.csv", index=False)
@@ -677,6 +711,7 @@ if __name__ == '__main__':
     # print(nayaDiganta_df)
     # print(ntv_df)
     # print(jugantor_df)
+
 
     # print(bhorer_kagoj_df)
     # print(kk_df)
