@@ -697,7 +697,7 @@ if __name__ == '__main__':
 
     print("\t\tNews search results:")
 
-    #
+
     # print(inqilab_df)
     # print(mzmin_df)
     # print(inqilab_df)
