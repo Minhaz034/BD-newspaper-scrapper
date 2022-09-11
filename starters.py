@@ -694,6 +694,7 @@ if __name__ == '__main__':
     # bhorer_kagoj_df = search_bhorer_kagoj(link_BHORER_KAGOJ)
     print("Completed")
     driver.close()
+
     print("\t\tNews search results:")
 
     #
