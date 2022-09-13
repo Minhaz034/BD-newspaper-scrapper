@@ -33,6 +33,7 @@ link_inqilab = "https://www.dailyinqilab.com/"
 link_NTVBD = "https://www.ntvbd.com/search/google?s="+SEARCH_TOPIC
 
 link_KALER_KONTHO = "http://www.kalerkantho.com/" + "home/search?cx=partner-pub-0600503450204720%3A2337922458&cof=FORID%3A10&ie=UTF-8&q=" + SEARCH_TOPIC # data not loading
+
 link_JUGANTOR = "https://www.jugantor.com/search/google?q="+SEARCH_TOPIC  # data not loading
 # link_BHORER_KAGOJ = "http://www.bhorerkagoj.net/"
 link_BHORER_KAGOJ = "https://www.bhorerkagoj.com/?s=" + SEARCH_TOPIC
