@@ -287,10 +287,38 @@ def search_daily_star(home_link):
             soup = BeautifulSoup(requests.get(link_soup).text, "lxml")
 
             try:
+                section = None
+                categories = soup.find('h1').findAllPrevious(attrs={'class':re.compile(r'category')})
+                # if not len(categories):
+                #     section = soup.find('span', attrs={'class':re.compile(r'category')}).text.strip()
+
+                for item in categories:
+
+                    if item.find('a') is not None:
+                        section = item.find('a').text.strip()
+                        break
+
+            except:
+                section = None
+                print(f"Section not accessible from page: {None}")
+            try:
+                date_primitive = soup.find('h1').findNext('div', attrs={'class':re.compile(r'date')})
+                date_primitive = date_primitive.text[:date_primitive.text.strip().find("Last update")].strip()
+                date = pd.to_datetime(date_primitive, format="%d/%m/%Y")
+            except:
+                date = None
+                print(f"Date not accessible from page: {None}")
+
+            try:
                 headline = soup.find('h1').text.strip()
             except:
                 headline = link.text.strip()
                 print(f"Headline not accessible from page: {headline}")
+
+            # try:
+            #     section = headline.findNext('div', attrs={'class': re.compile(r'date')}).text.strip()
+            # except:
+            #     print(f"Section not accessible from page: {section}")
 
             try:
                 description = soup.find('div', {"class":re.compile(r'^section-content')}).text.strip()
@@ -306,14 +334,15 @@ def search_daily_star(home_link):
 
 
             scrap_df.append({
-
+                'date'        : date_primitive,
+                'section'     : section,
                 'headlines'   : headline,
                 'links'       : link_soup,
                 'description' : description
             })
         driver.get(aci_search+str(page_no))
-    scrap_df = pd.DataFrame(scrap_df)
-
+    scrap_df = pd.DataFrame(scrap_df, )
+    scrap_df.date = pd.to_datetime(scrap_df.date)
     t1 = time.time()
     print(f"Time required: {t1-t0:0.3f}")
     return scrap_df
@@ -355,14 +384,14 @@ def search_mzamin(home_link):
     except TimeoutException:
         print("Timed out!")
 
-    search_links = driver.find_elements(By.XPATH, "//a[@class='gs-title']")
+    search_links = driver.find_elements(By.XPATH, "//a[@href][@class='gs-title']")
     # print(search_links)
     # search_links = driver.find_elements(By.XPATH, "//a[@dir='ltr']")
     # print(f"search links : {search_links}")
     texts = []
     links = []
     for element in search_links:
-        links.append(element.get_attribute("href"))
+        links.append(element.get_attribute("data-ctorig"))
         texts.append(element.get_attribute("innerHTML"))
     # print(f"links:{links}")
     print(f"{len(texts)} search results found!!")
@@ -689,9 +718,9 @@ if __name__ == '__main__':
 
     #In progress:
     # inqilab_df = search_inqilab(link_inqilab)
-    # daily_star_df = search_daily_star(link_DAILYSTAR)
+    daily_star_df = search_daily_star(link_DAILYSTAR)
     # jjd_df = search_JayJayDin(link_JAYJAYDIN)
-    kk_df = search_kaler_kontho(link_KALER_KONTHO)
+    # kk_df = search_kaler_kontho(link_KALER_KONTHO)
     # bhorer_kagoj_df = search_bhorer_kagoj(link_BHORER_KAGOJ)
     print("Completed")
     driver.close()
@@ -702,7 +731,7 @@ if __name__ == '__main__':
     # print(inqilab_df)
     # print(mzmin_df)
     # print(inqilab_df)
-    print(kk_df)
+    print(daily_star_df)
 
     # try:
     #     daily_star_df.to_csv("daily-star-scrapped-data.csv", index=False)
