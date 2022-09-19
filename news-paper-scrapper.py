@@ -19,9 +19,9 @@ import time
 # from boilerpy3 import extractors
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-import chromedriver_autoinstaller
+# import chromedriver_autoinstaller
+# chromedriver_autoinstaller.install()
 
-chromedriver_autoinstaller.install()
 
 # search_link = https://news.google.com/topstories?hl=bn&gl=BD&ceid=BD:bn
 # https://news.google.com/topstories?hl=en-BD&gl=BD&ceid=BD:en
@@ -30,18 +30,18 @@ chromedriver_autoinstaller.install()
 CHROME_DRIVER_PATH = "/home/aci/Chrome Webdriver/chromedriver"
 BASE = "https://news.google.com/search?q=site:"
 newspaper_links = [
-    "http://www.newspapers71.com",
-    "http://www.ntvbd.com",
-    "http://www.prothomalo.com",
-    "http://www.kalerkantho.com",
-    "http://www.bhorerkagoj.net",
-    "http://www.jaijaidinbd.com",
-    "http://www.amadershomoy.biz/beta",
-    "https://www.dailyinqilab.com",
-    "http://www.jugantor.com",
-    "http://www.dailynayadiganta.com",
-    "http://www.thedailystar.net",
-    "http://www.mzamin.com",
+"http://www.newspapers71.com",
+"http://www.ntvbd.com",
+"http://www.prothomalo.com",
+"http://www.kalerkantho.com",
+"http://www.bhorerkagoj.net/?s=এসিআই",
+"http://www.jaijaidinbd.com",
+"http://www.amadershomoy.biz/beta",
+"https://www.dailyinqilab.com/search?sq=এসিআই",
+"http://www.jugantor.com",
+"http://www.dailynayadiganta.com",
+"http://www.thedailystar.net",
+"http://www.mzamin.com",
 ]
 bn_extn = "&hl=bn&gl=BD&ceid=BD:bn"
 en_extn = "&hl=en-BD&gl=BD&ceid=BD:en"
@@ -49,38 +49,71 @@ search_key = "এসিআই"
 identifier = "//main/c-wiz/div/div/div/article"
 
 options = Options()
-options.headless = False
+options.headless = True
 options.add_argument("--window-size=1920,1200")
-# driver = webdriver.Chrome(options = options,executable_path= CHROME_DRIVER_PATH)
-driver = webdriver.Chrome()
+driver = webdriver.Chrome(options = options,executable_path= CHROME_DRIVER_PATH)
+# driver = webdriver.Chrome()
 driver.maximize_window()
-
 
 # search_link = BASE+newspaper_links[11]+' '+search_key+bn_extn
 
 
-def get_news(newspaper_link="www.prothomalo.com", search_key="এসিআই"):
-
-    search_link = BASE + newspaper_link + '%20"' + search_key + '"' + bn_extn
+def get_news(newspaper_link = "www.prothomalo.com",search_key = "এসিআই"):
+    # TextBlob()
+    search_link = BASE+newspaper_link+'%20"'+search_key+'"'+bn_extn
 
     driver.get(search_link)
     news_elements = driver.find_elements(By.XPATH, identifier)
-    headlines = driver.find_elements(By.XPATH, identifier + "/h3")
-    dates = driver.find_elements(By.XPATH, identifier + '/div/div/time')
-
+    headlines = driver.find_elements(By.XPATH, identifier+"/h3")
+    dates = driver.find_elements(By.XPATH, identifier+'/div/div/time')
+    headline_texts = []
+    date_texts = []
     if not len(news_elements):
-        print(newspaper_link + ": Empty")
+        print(newspaper_link+": Empty")
     else:
-        print(newspaper_link)
+        # print(newspaper_link)
+
         for headline, date in zip(headlines, dates):
-            print(date.get_attribute("datetime"))
-            print(headline.text)
+            hl = headline.text
+            headline_texts.append(hl)
+            # print(headline.text)
+            dt = date.get_attribute("datetime")
+            date_texts.append(dt)
+            # print(date.get_attribute("datetime"))
+            # print(date.get_attribute("datetime"))
+            # print(headline.text)
+    return  headline_texts,date_texts
+
+
 
 
 
 if __name__ == '__main__':
 
+    # extractor = extractors.CanolaExtractor()
+    #
+    # doc = extractor.get_doc_from_url('https://www.prothomalo.com/business/2mkfi5u24u')
+    # page_title = doc.title
+    # page_contents = doc.content
+    #
+    # print(page_title, end="\n\n")
+    # print(page_contents)
+    headlines = []
+    dates = []
     for link in newspaper_links:
-        get_news(newspaper_link=link)
+        hl,dt = get_news(newspaper_link=link)
+        headlines.append(hl)
+        dates.append(dt)
+        #print(get_news(newspaper_link=link))
+    # print(headlines)
+    # print(dates)
+    texts = []
+    for list in headlines:
+        for text in list:
+            texts.append(text)
+    # print(texts)
+    data = pd.DataFrame(texts,columns=['sentence1'])
+    print(data)
+    data.to_csv("/home/aci/PycharmProjects/banglabert/sequence_classification/sample_inputs/single_sequence/csv/outputs.csv",index=False)
 
-    driver.close()
+    # driver.close()
