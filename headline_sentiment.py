@@ -19,26 +19,16 @@ def get_sentiment(raw_inputs, model_path ="./bertweet-base-sentiment-analysis" )
     encoded_inputs = tokenizer(raw_inputs, padding=True, truncation=True, return_tensors="pt").to(device)
     model_outputs = model(**encoded_inputs)
     predictions = torch.nn.functional.softmax(model_outputs['logits'], dim=-1)
+    sentiments = [prediction.argmax(axis=0) for prediction in predictions.detach().cpu().numpy()]
+    print(model.config.id2label)
 
     if device.type == 'cuda':
         print(torch.cuda.get_device_name(0))
         print('Memory Usage:')
         print('Allocated:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         print('Cached:   ', round(torch.cuda.memory_reserved(0) / 1024 ** 3, 1), 'GB')
-    return predictions
+    return predictions,sentiments
 
-
-
-# print(f"{torch.cuda.device_count()} GPU available")
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# model_path = "./bertweet-base-sentiment-analysis"
-# tokenizer = AutoTokenizer.from_pretrained(model_path)
-# model = AutoModelForSequenceClassification.from_pretrained(model_path).to(device)
-# encoded_inputs = tokenizer(raw_inputs, padding=True, truncation=True, return_tensors="pt").to(device)
-# model_outputs = model(**encoded_inputs)
-# predictions = torch.nn.functional.softmax(model_outputs['logits'], dim=-1)
-# print(model.config.id2label)
-# print(predictions)
 
 if __name__ == '__main__':
     print(get_sentiment(sample_raw_inputs))
