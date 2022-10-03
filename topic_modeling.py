@@ -84,8 +84,13 @@ if __name__ == '__main__':
     sample_raw_inputs = ["Agricultural machinery is beyond the reach of farmers",
                          "Alamgir, who wanted to teach in exchange for rice, got a job in ACI Logistics Limited",
                          "Job opportunities in ACI Group with attractive salary"]
+
+    raw_inputs = []
+    df = pd.read_csv("sample_headlines.csv")
+    for tweet in df['headline']:
+        raw_inputs.append(tweet)
     obj = TopicModel()
-    data_ready = obj.process_words(texts=sample_raw_inputs)
+    data_ready = obj.process_words(texts=raw_inputs)
     model,vis =  obj.make_topic_model(data_ready)
     print(model.print_topics())
     pyLDAvis.save_html(vis, 'lda_outputs.html')
