@@ -11,7 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import chromedriver_autoinstaller
-import chromedriver_binary
+
 from tqdm import tqdm
 import json
 import requests
@@ -61,7 +61,7 @@ options.add_argument("--window-size=1920,1200")
 #
 # chrome_options.add_argument("--disable-notifications")
 # driver = webdriver.Chrome(options = options,executable_path= CHROME_DRIVER_PATH)
-driver = webdriver.Chrome()
+driver = webdriver.Chrome(options=options)
 # driver = webdriver.Chrome(ChromeDriverManager().install())
 
 driver.maximize_window()
@@ -178,14 +178,6 @@ def search_inqilab(home_link):
 def search_jugantor(home_link):
     print("\t JUGANTOR")
     driver.get(home_link)
-    # WebDriverWait(driver, 5).until(
-    #     EC.element_to_be_clickable((By.XPATH, "//i[@class='fas fa-search align-bottom']"))).click()
-    # WebDriverWait(driver, 5).until(
-    #     EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).click()
-    # WebDriverWait(driver, 5).until(
-    #     EC.presence_of_element_located((By.XPATH, "//input[@class='form-control srch_keyword']"))).send_keys(
-    #     SEARCH_TOPIC + Keys.RETURN)
-    # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='btn']"))).click()
     print("entering search results")
     try:
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//a[@class='gs-title']")))
@@ -225,10 +217,6 @@ def search_jugantor(home_link):
 def search_bhorer_kagoj(home_link):
     print("\t BHORER KAGOJ")
     driver.get(home_link)
-    # WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='search-submit fa']"))).click()
-    # WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='search-field']"))).click()
-    # WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//input[@class='search-field']"))).send_keys(SEARCH_TOPIC+ Keys.RETURN)
-    # WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='btn']"))).click()
     print("entering search results")
     try:
         WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, "//div[@id='id_246528']")))
@@ -242,18 +230,12 @@ def search_bhorer_kagoj(home_link):
     # print(f"search links : {search_links}")
     texts = []
     links = []
-    # for element in search_texts:
-    #     # links.append(element.get_attribute("href"))
-    #     texts.append(element.get_attribute("innerHTML"))
     for element in search_links:
         links.append(element.get_attribute("href"))
         texts.append(element.get_attribute("innerHTML"))
 
     print(f"{len(texts)} search results found!!")
     print(f"{len(links)} links!!")
-    # print(links)
-    # print(f"texts:{texts}")
-    # print(f"links: {links}")
     df = pd.DataFrame(texts, columns=['Headlines'])
     df['links'] = links
     df = df.drop_duplicates(keep='first')
