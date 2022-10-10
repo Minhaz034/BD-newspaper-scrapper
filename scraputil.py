@@ -56,7 +56,8 @@ def scan_page_prothomalo(link, keep_content=True):
     location = page_html.find('span', {'class': re.compile(r"location")})
 
     if keep_content:
-        description = page_html.find('div', {'class': re.compile(r"^story-content")})
+        description = page_html.find('div', {'class': re.compile(r"^story-grid")})
+
     try:
         data_dict = {
             'newspaper': 'prothomalo',
@@ -68,7 +69,10 @@ def scan_page_prothomalo(link, keep_content=True):
             'headline': headline.text.strip()
         }
         if keep_content:
-            data_dict['description'] = description.findChild('div').text.strip() if description else description
+            desc = ''
+            for para in description.find_all('p'):
+                desc += para.text + '\n'
+            data_dict['description'] = desc if description else description
     except:
         print("Error while scraping!")
     return data_dict
@@ -339,23 +343,23 @@ class GetNews:
         else:
             for i in news_df.index:
                 try:
-                    news_df.date[i] = single_detection(news_df.date[i], api_key="15c5418e83130ba091ea4d07875a7517")
+                    news_df.date.at[i] = single_detection(news_df.date[i], api_key="15c5418e83130ba091ea4d07875a7517")
                 except:
                     pass
                 try:
-                    news_df.section[i] = self.translator.translate(news_df.section[i])
+                    news_df.section.at[i] = self.translator.translate(news_df.section[i])
                 except:
                     pass
                 try:
-                    news_df.source[i] = self.translator.translate(news_df.source[i])
+                    news_df.source.at[i] = self.translator.translate(news_df.source[i])
                 except:
                     pass
                 try:
-                    news_df.headline[i] = self.translator.translate(news_df.headline[i])
+                    news_df.headline.at[i] = self.translator.translate(news_df.headline[i])
                 except:
                     pass
                 try:
-                    news_df.description[i] = self.translator.translate(news_df.description[i])
+                    news_df.description.at[i] = self.translator.translate(news_df.description[i])
                 except:
                     pass
         return news_df
@@ -466,19 +470,21 @@ class GetNews:
         search_link = "https://news.google.com/search?q=site:" + self.newspaper_map[
             name].link + '%20"' + search_key + '"' + extn
         self.driver.get(search_link)
+        print(f"Scraping from {name}!")
 
         identifier = "//article"
-        news_links = self.driver.find_elements(By.XPATH, identifier + "/a[@href]")
+        search_links = self.driver.find_elements(By.XPATH, identifier + "/a[@href]")
         headlines = self.driver.find_elements(By.XPATH, identifier + "/h3")
         dates = self.driver.find_elements(By.XPATH, identifier + '/div/div/time')
         scrap_df = []
-        if not len(news_links):
+        if not len(search_links):
             print(self.newspaper_map[name].name + " not available in google search.")
             scrap_df = self.newspaper_map[name].fn(pages=1, keep_content=keep_content)
             print(name + " is obtained from original page.")
         else:
             scrap_df = []
-            for headline, date, link_element in zip(headlines, dates, news_links):
+            for j, (headline, date, link_element) in enumerate(zip(headlines, dates, search_links)):
+                print(f"News number {j+1}: {headline.text.strip()}")
                 link = link_element.get_attribute('href')
                 page_dict = self.newspaper_map[name].page_fn(link, keep_content=keep_content)
                 page_dict['date'] = pd.to_datetime(date.get_attribute('datetime'))
@@ -731,7 +737,6 @@ class GetNews:
 
             # Go to next page
             try:
-                print(i)
                 next_page = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                     (By.XPATH, f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']")))
                 next_page.click()
