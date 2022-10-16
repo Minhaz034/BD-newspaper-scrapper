@@ -13,10 +13,50 @@ from deep_translator import (GoogleTranslator, single_detection)
 from selenium import webdriver
 import chromedriver_autoinstaller
 import geckodriver_autoinstaller
+import os
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
 
 my_api = "15c5418e83130ba091ea4d07875a7517"
 translator = GoogleTranslator(source='bn', target='en')
 
+
+def get_sentiment(raw_inputs, model_path="./bertweet-base-sentiment-analysis"):
+    print(f"{torch.cuda.device_count()} GPU available")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    try:
+        if os.path.exists(model_path):
+            print("Model already on device!")
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
+            model = AutoModelForSequenceClassification.from_pretrained(model_path).to(device)
+        else:
+            tokenizer = AutoTokenizer.from_pretrained("finiteautomata/bertweet-base-sentiment-analysis")
+            model = AutoModelForSequenceClassification.from_pretrained("finiteautomata/bertweet-base-sentiment-analysis").to(device)
+
+            tokenizer.save_pretrained(model_path)
+            model.save_pretrained(model_path)
+
+    except:
+        tokenizer = AutoTokenizer.from_pretrained("finiteautomata/bertweet-base-sentiment-analysis")
+        model = AutoModelForSequenceClassification.from_pretrained(
+            "finiteautomata/bertweet-base-sentiment-analysis").to(device)
+
+        tokenizer.save_pretrained(model_path)
+        model.save_pretrained(model_path)
+
+    encoded_inputs = tokenizer(raw_inputs, padding=True, truncation=True, return_tensors="pt").to(device)
+    model_outputs = model(**encoded_inputs)
+    predictions = torch.nn.functional.softmax(model_outputs['logits'], dim=-1)
+    sentiments = [model.config.id2label[prediction.argmax(axis=0)] for prediction in predictions.detach().cpu().numpy()]
+    # print(model.config.id2label)
+    # sentiments[] = model.config.id2label[sentiments]
+    if device.type == 'cuda':
+        print(torch.cuda.get_device_name(0))
+        print('Memory Usage:')
+        print('Allocated:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
+        print('Cached:   ', round(torch.cuda.memory_reserved(0) / 1024 ** 3, 1), 'GB')
+    return sentiments
 
 def scan_page_bhorerkagoj(link, keep_content=True):
     date_id = link.find('bhorerkagoj.com/') + len('bhorerkagoj.com/')
@@ -299,6 +339,65 @@ def scan_page_daily_star(link, keep_content=True):
     return data_dict
 
 
+def scan_page_dhaka_tribune(link, keep_content=True):
+    page_source = requests.get(link).text
+    page_html = BeautifulSoup(page_source, "html.parser")
+    headline = page_html.find('h1', {'class': re.compile(r"headline")})
+    date = page_html.find('meta', {'property': re.compile(r"time")})
+    section = str(page_source)[str(page_source).find('\"articleSection\":\"')
+                               + len('\"articleSection\":\"'):]
+    section = section[:section.find('\"')]
+    source = str(page_source)[str(page_source).find('\"authors\":\"')
+                              + len('\"authors\":\"'):]
+    source = source[:source.find('\"')]
+
+
+    try:
+        data_dict = {
+            'newspaper': 'dhakatribune',
+            'link': link,
+            'language': 'en',
+            'date': str(pd.to_datetime(date['content']).date()) if date else '',
+            'section': section.strip() if section else '',
+            'source': source.strip() if source else '',
+            'headline': headline.text.strip() if headline else ''
+        }
+        if keep_content:
+            description = page_html.find('div', {'class': 'news-holder-single-page_content-holder mt-20'})
+            data_dict['description'] = description.text.strip() if description else description
+    except:
+        print("Error in extracting information or advertisement error.")
+    return data_dict
+
+def scan_page_tbs(link, keep_content=True):
+    # if 'tags/' in link:
+    #     page_html = BeautifulSoup(requests.get(link).text, "html.parser")
+    #     link = 'https://www.thedailystar.net/' + page_html.find('div', {'class': 'card-content'}).find('a')['href']
+
+    page_source = requests.get(link).text
+    page_html = BeautifulSoup(page_source, features="html.parser")
+    headline = page_html.find('h1', attrs={'itemprop': 'headline'})
+    date = page_html.find('meta', {'property': re.compile(r'published_time')})
+    section = page_html.find('h2', {'class': re.compile(r'news-details-cat')})
+    source = page_html.find('div', {'class': re.compile(r'author-name')})
+
+    try:
+        data_dict = {
+            'newspaper': 'the business standard',
+            'link': link,
+            'language': 'en',
+            'date': str(pd.to_datetime(date['content'][:10]).date()) if date else '',
+            'section': section.text.strip() if section else '',
+            'source': source.text.strip() if source else '',
+            'headline': headline.text.strip() if headline else ''
+        }
+        if keep_content:
+            description = page_html.find('div', {'class': re.compile(r'section-content')})
+            data_dict['description'] = description.text.strip() if description else description
+    except:
+        print("Error in extracting information or advertisement error.")
+    return data_dict
+
 class GetNews:
     def __init__(self, browser="Chrome", headless=False, search_key="এসিআই"):
 
@@ -395,8 +494,8 @@ class GetNews:
             self.search_nayaDiganta,
             self.search_mzamin,
             self.search_daily_star,
-            None,
-            None,
+            self.search_dhaka_tribune,
+            self.search_tbs,
             None]
         links = [
             # 'https://www.newspapers71.com',
@@ -426,8 +525,8 @@ class GetNews:
             scan_page_nayadiganta,
             scan_page_mzamin,
             scan_page_daily_star,
-            None,
-            None,
+            scan_page_dhaka_tribune,
+            scan_page_tbs,
             None]
         formal_names = [
             # 'Newspapers 71',
@@ -931,5 +1030,121 @@ class GetNews:
             sleep(2)
 
         print("End of Daily Star search!")
+        scrap_df = pd.DataFrame(scrap_df)
+        return scrap_df
+
+    def search_dhaka_tribune(self, pages=1, keep_content=False):
+        print("Scraping from Dhaka Tribune")
+        self.driver.get('https://www.dhakatribune.com' + '/search?q=' + self.translator.translate(self.search_key))
+
+        scrap_df = []
+        i = 1
+        while i <= pages:
+            try:
+                print("Searching...")
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, "//div[@class='gs-title']/a[@class ='gs-title'][@href]")))
+                print("Search results ready!!")
+            except TimeoutException:
+                print("Timed out!")
+
+            search_links = self.driver.find_elements(By.XPATH, "//div[@class='gs-title']/a[@class='gs-title'][@href]")
+            j = 1
+            for j, element in enumerate(search_links):
+                page_link = element.get_attribute("href")
+                print(f"News number: {(i - 1) * len(search_links) + (j + 1)}")
+
+                page_dict = scan_page_dhaka_tribune(page_link, keep_content=keep_content)
+                scrap_df.append(page_dict)
+
+            # Go to next page
+            try:
+                print(i)
+                next_page = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                    (By.XPATH, f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']")))
+                next_page.click()
+
+            except ElementClickInterceptedException:
+                print("Element not visible due to ad")
+                next_page_element = WebDriverWait(self.driver, 5).until(EC.visibility_of_element_located(
+                    (By.XPATH, f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']")))
+                self.driver.execute_script("return arguments[0].scrollIntoView(true);", next_page_element)
+                self.driver.find_element(By.XPATH,
+                                         f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']").click()
+            except:
+                print("Scraping done!")
+                break
+            i += 1
+            sleep(2)
+
+        print("End of Dhaka Tribune search!")
+        scrap_df = pd.DataFrame(scrap_df)
+        return scrap_df
+
+    def search_tbs(self, pages=1, keep_content=False):
+        print("Scraping from The Business Standard")
+        self.driver.get("https://www.tbsnews.net/search")
+
+        while True:
+            try:
+                WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@class='gsc-input']")))
+            except:
+                print("Search dialog not visible.")
+                self.driver.refresh()
+                continue
+            try:
+                WebDriverWait(self.driver, 2).until(
+                    EC.element_to_be_clickable((By.XPATH, "//input[@class='gsc-input']")))
+                WebDriverWait(self.driver, 2).until(
+                    EC.element_to_be_clickable((By.XPATH, "//input[@class='gsc-input']"))).send_keys(
+                    self.search_key + Keys.RETURN)
+                break
+            except:
+                print("Can't interact with element!")
+                self.driver.refresh()
+                continue
+
+        scrap_df = []
+        i = 1
+        while i <= pages:
+            try:
+                print("Searching...")
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, "//div[@class='gs-title']/a[@class ='gs-title'][@href]")))
+                print("Search results ready!!")
+            except TimeoutException:
+                print("Timed out!")
+
+            search_links = self.driver.find_elements(By.XPATH, "//div[@class='gs-title']/a[@class='gs-title'][@href]")
+            j = 1
+            for j, element in enumerate(search_links):
+                page_link = element.get_attribute("href")
+                print(f"News number: {(i - 1) * len(search_links) + (j + 1)}")
+
+                page_dict = scan_page_tbs(page_link, keep_content=keep_content)
+                scrap_df.append(page_dict)
+
+            # Go to next page
+            try:
+                print(i)
+                next_page = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                    (By.XPATH, f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']")))
+                next_page.click()
+
+            except ElementClickInterceptedException:
+                print("Element not visible due to ad")
+                next_page_element = WebDriverWait(self.driver, 5).until(EC.visibility_of_element_located(
+                    (By.XPATH, f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']")))
+                self.driver.execute_script("return arguments[0].scrollIntoView(true);", next_page_element)
+                self.driver.find_element(By.XPATH,
+                                         f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']").click()
+            except:
+                print("Scraping done!")
+                break
+            i += 1
+            sleep(2)
+
+        print("End of The Business Standard search!")
         scrap_df = pd.DataFrame(scrap_df)
         return scrap_df
