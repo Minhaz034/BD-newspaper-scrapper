@@ -17,9 +17,27 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
+import re,
+# from pprint import pprint
+import pyLDAvis.gensim_models
+# pyLDAvis.enable_notebook()
+import gensim, spacy, logging, warnings
+import gensim.corpora as corpora
+import nltk
+from gensim.utils import  simple_preprocess
+from gensim.models import CoherenceModel
+# import matplotlib.pyplot as plt
+from nltk.corpus import stopwords
+
+nltk.download('stopwords')
+warnings.filterwarnings("ignore",category=DeprecationWarning)
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.ERROR)
+
 
 my_api = "15c5418e83130ba091ea4d07875a7517"
-translator = GoogleTranslator(source='bn', target='en')
+
+
+# trans_b2e = GoogleTranslator(source='bn', target='en')
 
 
 def get_sentiment(raw_inputs, model_path="./bertweet-base-sentiment-analysis"):
@@ -32,7 +50,8 @@ def get_sentiment(raw_inputs, model_path="./bertweet-base-sentiment-analysis"):
             model = AutoModelForSequenceClassification.from_pretrained(model_path).to(device)
         else:
             tokenizer = AutoTokenizer.from_pretrained("finiteautomata/bertweet-base-sentiment-analysis")
-            model = AutoModelForSequenceClassification.from_pretrained("finiteautomata/bertweet-base-sentiment-analysis").to(device)
+            model = AutoModelForSequenceClassification.from_pretrained(
+                "finiteautomata/bertweet-base-sentiment-analysis").to(device)
 
             tokenizer.save_pretrained(model_path)
             model.save_pretrained(model_path)
@@ -57,6 +76,7 @@ def get_sentiment(raw_inputs, model_path="./bertweet-base-sentiment-analysis"):
         print('Allocated:', round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1), 'GB')
         print('Cached:   ', round(torch.cuda.memory_reserved(0) / 1024 ** 3, 1), 'GB')
     return sentiments
+
 
 def scan_page_bhorerkagoj(link, keep_content=True):
     date_id = link.find('bhorerkagoj.com/') + len('bhorerkagoj.com/')
@@ -351,7 +371,6 @@ def scan_page_dhaka_tribune(link, keep_content=True):
                               + len('\"authors\":\"'):]
     source = source[:source.find('\"')]
 
-
     try:
         data_dict = {
             'newspaper': 'dhakatribune',
@@ -368,6 +387,7 @@ def scan_page_dhaka_tribune(link, keep_content=True):
     except:
         print("Error in extracting information or advertisement error.")
     return data_dict
+
 
 def scan_page_tbs(link, keep_content=True):
     # if 'tags/' in link:
@@ -398,6 +418,7 @@ def scan_page_tbs(link, keep_content=True):
         print("Error in extracting information or advertisement error.")
     return data_dict
 
+
 class GetNews:
     def __init__(self, browser="Chrome", headless=False, search_key="এসিআই"):
 
@@ -405,7 +426,8 @@ class GetNews:
         # options = Options()
         self.options.headless = headless
         self.search_key = search_key
-        self.translator = GoogleTranslator(source='bn', target='en')
+        self.bn2en = GoogleTranslator(source='bn', target='en')
+        self.en2bn = GoogleTranslator(source='en', target='bn')
         self.newspaper_map = self.get_newspaper_map()
 
     def set_browser_options(self, name="Chrome"):
@@ -446,19 +468,19 @@ class GetNews:
                 except:
                     pass
                 try:
-                    news_df.section.at[i] = self.translator.translate(news_df.section[i])
+                    news_df.section.at[i] = self.bn2en.translate(news_df.section[i])
                 except:
                     pass
                 try:
-                    news_df.source.at[i] = self.translator.translate(news_df.source[i])
+                    news_df.source.at[i] = self.bn2en.translate(news_df.source[i])
                 except:
                     pass
                 try:
-                    news_df.headline.at[i] = self.translator.translate(news_df.headline[i])
+                    news_df.headline.at[i] = self.bn2en.translate(news_df.headline[i])
                 except:
                     pass
                 try:
-                    news_df.description.at[i] = self.translator.translate(news_df.description[i])
+                    news_df.description.at[i] = self.bn2en.translate(news_df.description[i])
                 except:
                     pass
         return news_df
@@ -553,6 +575,8 @@ class GetNews:
         return newspaper
 
     def extract(self, name="bhorerkagoj", google_news=False, pages=1, keep_content=False):
+        self.search_key = self.bn2en.translate(self.search_key) if self.newspaper_map[
+                                                                       name].language == 'en' else self.search_key
         if google_news:
             scraped_df = self.search_google_news(name, keep_content)
         else:
@@ -560,14 +584,9 @@ class GetNews:
         return scraped_df
 
     def search_google_news(self, name='prothomalo', keep_content=False):
-        search_key = self.search_key
-        extn = "&hl=bn&gl=BD&ceid=BD:bn"
-        if self.newspaper_map[name].language == 'en':
-            search_key = translator.translate(search_key)
-            extn = "&hl=en-BD&gl=BD&ceid=BD:en"
-
+        extn = "&hl=en-BD&gl=BD&ceid=BD:en" if self.newspaper_map[name].language == 'en' else "&hl=bn&gl=BD&ceid=BD:bn"
         search_link = "https://news.google.com/search?q=site:" + self.newspaper_map[
-            name].link + '%20"' + search_key + '"' + extn
+            name].link + '%20"' + self.search_key + '"' + extn
         self.driver.get(search_link)
         print(f"Scraping from {name}!")
 
@@ -583,7 +602,7 @@ class GetNews:
         else:
             scrap_df = []
             for j, (headline, date, link_element) in enumerate(zip(headlines, dates, search_links)):
-                print(f"News number {j+1}: {headline.text.strip()}")
+                print(f"News number {j + 1}: {headline.text.strip()}")
                 link = link_element.get_attribute('href')
                 page_dict = self.newspaper_map[name].page_fn(link, keep_content=keep_content)
                 page_dict['date'] = pd.to_datetime(date.get_attribute('datetime'))
@@ -986,8 +1005,8 @@ class GetNews:
 
     def search_daily_star(self, pages=1, keep_content=False):
         print("Scraping from Daily Star")
-        self.driver.get('https://www.thedailystar.net' + '/search?t=' + self.translator.translate(
-            self.search_key) + '#gsc.tab=0&gsc.q=' + self.translator.translate(self.search_key) + '&gsc.page=1')
+        self.driver.get('https://www.thedailystar.net' + '/search?t=' +
+            self.search_key + '#gsc.tab=0&gsc.q=' + self.search_key + '&gsc.page=1')
 
         scrap_df = []
         i = 1
@@ -1035,7 +1054,7 @@ class GetNews:
 
     def search_dhaka_tribune(self, pages=1, keep_content=False):
         print("Scraping from Dhaka Tribune")
-        self.driver.get('https://www.dhakatribune.com' + '/search?q=' + self.translator.translate(self.search_key))
+        self.driver.get('https://www.dhakatribune.com' + '/search?q=' + self.search_key)
 
         scrap_df = []
         i = 1
@@ -1148,3 +1167,62 @@ class GetNews:
         print("End of The Business Standard search!")
         scrap_df = pd.DataFrame(scrap_df)
         return scrap_df
+
+
+class TopicModel():
+    stop_words = stopwords.words('english')
+    stop_words.extend(
+        ['from', 'subject', 're', 'edu', 'use', 'not', 'would', 'say', 'could', '_', 'be', 'know', 'good', 'go', 'get',
+         'do', 'done', 'try', 'many', 'some', 'nice', 'thank', 'think', 'see', 'rather', 'easy', 'easily', 'lot',
+         'lack', 'make', 'want', 'seem', 'run', 'need', 'even', 'right', 'line', 'even', 'also', 'may', 'take', 'come',
+         'aci'])
+
+
+    def sentence_to_words(self,sentences):
+        for sent in sentences:
+            sent = re.sub('\S*@\S*\s?', '', sent)  # remove emails
+            sent = re.sub('\s+', ' ', sent)  # remove newline chars
+            sent = re.sub("\'", "", sent)  # remove single quotes
+            sent = gensim.utils.simple_preprocess(str(sent), deacc=True)
+            yield (sent)
+
+    def process_words(self, texts, stop_words=stop_words, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']):
+        data_words = self.sentence_to_words(texts)
+        bigram = gensim.models.Phrases(data_words, min_count=5, threshold=100)  # higher threshold fewer phrases.
+        trigram = gensim.models.Phrases(bigram[data_words], threshold=100)
+        bigram_mod = gensim.models.phrases.Phraser(bigram)
+        trigram_mod = gensim.models.phrases.Phraser(trigram)
+
+        texts = [[word for word in simple_preprocess(str(doc)) if word not in stop_words] for doc in texts]
+        texts = [bigram_mod[doc] for doc in texts]
+        texts = [trigram_mod[bigram_mod[doc]] for doc in texts]
+        # texts_out = []
+        # nlp = spacy.load('en', disable=['parser', 'ner'])
+        # for sent in texts:
+        #     doc = nlp(" ".join(sent))
+        #     texts_out.append([token.lemma_ for token in doc if token.pos_ in allowed_postags])
+        # remove stopwords once more after lemmatization
+
+        # texts_out = [[word for word in simple_preprocess(str(doc)) if word not in stop_words] for doc in texts_out]
+        return texts
+
+    def make_topic_model(self,data_ready):
+        id2word = corpora.Dictionary(data_ready)
+        corpus = [id2word.doc2bow(text) for text in data_ready]
+
+        # Build LDA model
+        lda_model = gensim.models.ldamodel.LdaModel(corpus=corpus,
+                                                    id2word=id2word,
+                                                    num_topics=4,
+                                                    random_state=100,
+                                                    update_every=1,
+                                                    chunksize=10,
+                                                    passes=10,
+                                                    alpha='symmetric',
+                                                    iterations=100,
+                                                    per_word_topics=True)
+
+        # pprint(lda_model.print_topics())
+        vis = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary=lda_model.id2word)
+
+        return lda_model, vis
