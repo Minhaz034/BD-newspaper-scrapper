@@ -17,7 +17,7 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-import re,
+import re
 # from pprint import pprint
 import pyLDAvis.gensim_models
 # pyLDAvis.enable_notebook()
@@ -28,6 +28,7 @@ from gensim.utils import  simple_preprocess
 from gensim.models import CoherenceModel
 # import matplotlib.pyplot as plt
 from nltk.corpus import stopwords
+import undetected_chromedriver as uc
 
 nltk.download('stopwords')
 warnings.filterwarnings("ignore",category=DeprecationWarning)
@@ -449,6 +450,8 @@ class GetNews:
         elif name == "Edge":
             edgedriver_autoinstaller.install()
             self.driver = webdriver.Edge(options=self.options)
+        elif name == 'undetected':
+            self.driver = uc.Chrome()
         self.driver.maximize_window()
         self.driver.delete_all_cookies()
 
@@ -1103,6 +1106,74 @@ class GetNews:
     def search_tbs(self, pages=1, keep_content=False):
         print("Scraping from The Business Standard")
         self.driver.get("https://www.tbsnews.net/search")
+
+        while True:
+            try:
+                WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@class='gsc-input']")))
+            except:
+                print("Search dialog not visible.")
+                self.driver.refresh()
+                continue
+            try:
+                WebDriverWait(self.driver, 2).until(
+                    EC.element_to_be_clickable((By.XPATH, "//input[@class='gsc-input']")))
+                WebDriverWait(self.driver, 2).until(
+                    EC.element_to_be_clickable((By.XPATH, "//input[@class='gsc-input']"))).send_keys(
+                    self.search_key + Keys.RETURN)
+                break
+            except:
+                print("Can't interact with element!")
+                self.driver.refresh()
+                continue
+
+        scrap_df = []
+        i = 1
+        while i <= pages:
+            try:
+                print("Searching...")
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, "//div[@class='gs-title']/a[@class ='gs-title'][@href]")))
+                print("Search results ready!!")
+            except TimeoutException:
+                print("Timed out!")
+
+            search_links = self.driver.find_elements(By.XPATH, "//div[@class='gs-title']/a[@class='gs-title'][@href]")
+            j = 1
+            for j, element in enumerate(search_links):
+                page_link = element.get_attribute("href")
+                print(f"News number: {(i - 1) * len(search_links) + (j + 1)}")
+
+                page_dict = scan_page_tbs(page_link, keep_content=keep_content)
+                scrap_df.append(page_dict)
+
+            # Go to next page
+            try:
+                print(i)
+                next_page = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                    (By.XPATH, f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']")))
+                next_page.click()
+
+            except ElementClickInterceptedException:
+                print("Element not visible due to ad")
+                next_page_element = WebDriverWait(self.driver, 5).until(EC.visibility_of_element_located(
+                    (By.XPATH, f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']")))
+                self.driver.execute_script("return arguments[0].scrollIntoView(true);", next_page_element)
+                self.driver.find_element(By.XPATH,
+                                         f"//div[@class='gsc-cursor']/div[@aria-label='Page {i + 1}']").click()
+            except:
+                print("Scraping done!")
+                break
+            i += 1
+            sleep(2)
+
+        print("End of The Business Standard search!")
+        scrap_df = pd.DataFrame(scrap_df)
+        return scrap_df
+
+    def search_fin_exp(self, pages=1, keep_content=False):
+        print("Scraping from The Financial Express")
+        self.driver.get("https://thefinancialexpress.com.bd/" + "search?term=news&query=" + self.search_key + "&page=1")
 
         while True:
             try:
