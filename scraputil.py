@@ -425,7 +425,8 @@ class GetNews:
 
         self.options = self.set_browser_options(browser)
         # options = Options()
-        self.options.headless = headless
+        if browser != 'Undetected':
+            self.options.headless = headless
         self.search_key = search_key
         self.bn2en = GoogleTranslator(source='bn', target='en')
         self.en2bn = GoogleTranslator(source='en', target='bn')
@@ -434,11 +435,16 @@ class GetNews:
     def set_browser_options(self, name="Chrome"):
         if name == "Chrome":
             from selenium.webdriver.chrome.options import Options
+            options = Options()
         elif name == "Firefox":
             from selenium.webdriver.firefox.options import Options
+            options = Options()
         elif name == "Edge":
             from selenium.webdriver.edge.options import Options
-        return Options()
+            options = Options()
+        else:
+            options = webdriver.ChromeOptions()
+        return options
 
     def select_browser(self, name="Chrome"):
         if name == "Chrome":
@@ -450,8 +456,11 @@ class GetNews:
         elif name == "Edge":
             edgedriver_autoinstaller.install()
             self.driver = webdriver.Edge(options=self.options)
-        elif name == 'undetected':
-            self.driver = uc.Chrome()
+        elif name == 'Undetected':
+            # options = webdriver.ChromeOptions()
+            self.options.add_argument("start-maximized")
+            self.driver = uc.Chrome(options=self.options)
+
         self.driver.maximize_window()
         self.driver.delete_all_cookies()
 
@@ -1064,7 +1073,7 @@ class GetNews:
         while i <= pages:
             try:
                 print("Searching...")
-                WebDriverWait(self.driver, 5).until(
+                WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located((By.XPATH, "//div[@class='gs-title']/a[@class ='gs-title'][@href]")))
                 print("Search results ready!!")
             except TimeoutException:
