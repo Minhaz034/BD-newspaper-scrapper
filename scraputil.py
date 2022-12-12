@@ -106,6 +106,33 @@ def scan_page_bhorerkagoj(link, keep_content=True):
         print("Error in extracting information or advertisement error.")
     return data_dict
 
+def scan_page_bhorerkagoj_sel(link, keep_content=True):
+    date_id = link.find('bhorerkagoj.com/') + len('bhorerkagoj.com/')
+    date = link[date_id:date_id + 10]
+
+    page_source = requests.get(link).text
+    page_html = BeautifulSoup(page_source, features="html.parser")
+    headline = page_html.find('h2', {'class': 'title'})
+    section = page_html.find('a', {'rel': 'category tag'})
+    source = page_html.find('p', {'class': 'name'})
+    try:
+
+        data_dict = {
+            'newspaper': 'bhorerkagoj',
+            'link': link,
+            'language': 'bn',
+            'date': date,
+            'section': section.text.strip() if section else '',
+            'source': source.text.strip() if source else '',
+            'headline': headline.text.strip()
+        }
+        if keep_content:
+            description = page_html.find('div', {'id': 'content-p'})
+            data_dict['description'] = description.text.strip()
+    except:
+        print("Error in extracting information or advertisement error.")
+    return data_dict
+
 
 def scan_page_prothomalo(link, keep_content=True):
     page_source = requests.get(link).text
@@ -654,6 +681,36 @@ class GetNews:
         print("End of NTV search!")
         scrap_df = pd.DataFrame(scrap_df)
         return scrap_df
+
+    # def scan_page_bhorerkagoj_sel(self, link, keep_content=True):
+    #     date_id = link.find('bhorerkagoj.com/') + len('bhorerkagoj.com/')
+    #     date = link[date_id:date_id + 10]
+    #
+    #     self.driver.get(link)
+    #     headline = self.driver.find_element(By.XPATH, "//h2[@class='title']")
+    #     section = self.driver.find_element(By.XPATH, "//a[@rel='category tag']")
+    #     source = self.driver.find_element(By.XPATH, "//p[@class='name']")
+    #     try:
+    #
+    #         data_dict = {
+    #             'newspaper': 'bhorerkagoj',
+    #             'link': link,
+    #             'language': 'bn',
+    #             'date': date,
+    #             'section': section.text.strip() if section else '',
+    #             'source': source.text.strip() if source else '',
+    #             'headline': headline.text.strip()
+    #         }
+    #         if keep_content:
+    #             description = driver.find_element(By.XPATH, "//div[@id='content-p']")
+    #             data_dict['description'] = description.text.strip()
+    #     except:
+    #         print("Error in extracting information or advertisement error.")
+    #     self.driver.back()
+    #
+    #     return data_dict
+
+
 
     def search_bhorer_kagoj(self, pages=1, keep_content=False):
         print("Scraping from BHORER KAGOJ")
