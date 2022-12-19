@@ -5,6 +5,8 @@ from transformers import AutoModel
 from transformers import AutoModelForSequenceClassification
 import torch
 import os
+
+from deep_translator import (GoogleTranslator, single_detection)
 import time
 
 sample_raw_inputs=["Agricultural machinery is beyond the reach of farmers",
@@ -51,5 +53,36 @@ def get_sentiment(raw_inputs, model_path ="./bertweet-base-sentiment-analysis" )
 
 
 if __name__ == '__main__':
-    print(get_sentiment(sample_raw_inputs))
+    df = pd.read_csv("./outputs.csv")
+    # print(df['headline'])
+    # single_detection(news_df.date[i], api_key="15c5418e83130ba091ea4d07875a7517")
+    sentiments = []
+    headlines = []
+    df[ df['language']=='bangla']
+
+    for index,language in enumerate(df['language']):
+        if language == 'bangla':
+            headline =  GoogleTranslator(source='bn', target='en').translate(text=df.loc[index]['headline'])
+            headlines.append(headline)
+            # sentiment = get_sentiment(headline)
+            # print(sentiment)
+        else:
+            headlines.append(df.loc[index]['headline'])
+
+    sentiments = get_sentiment(raw_inputs=headlines)
+    df['headline'] = headlines
+    df['sentiment'] = sentiments
+
+    print(df)
+            # print(df.loc[index]['headline'])
+
+    # for row in range(df.shape[0]):
+    #     if df[row]['language'] == 'bangla':
+    #         headline =  GoogleTranslator(source='auto', target='de').translate(text=df[row]['headline'])
+    #         print(headline)
+
+    # sentiments = get_sentiment(sample_raw_inputs)
+    # for sentence,sentiment in zip(sample_raw_inputs,sentiments):
+    #     print(f"{sentence}:{sentiment}")
+    # print(get_sentiment(sample_raw_inputs))
 
