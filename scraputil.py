@@ -133,9 +133,10 @@ def scan_page_prothomalo(link, keep_content=True):
     page_source = requests.get(link).text
     page_html = BeautifulSoup(page_source, features="html.parser")
     date = page_html.find('time', {'datetime': re.compile(r"")})['datetime']
-    headline = page_html.find('h1', {'class': re.compile(r'headline')})
-    section = page_html.find('span', {'class': re.compile(r"section-name")})
-    source = page_html.find('span', {'class': re.compile(r"contributor")})
+    page_header = page_html.find('div', {'class': re.compile(r"story-title")})
+    headline = page_header.find('h1')
+    section = page_header.find('a')
+    source = page_html.find('div', {'class': re.compile(r"contributor")})
     location = page_html.find('span', {'class': re.compile(r"location")})
 
     if keep_content:
@@ -158,6 +159,7 @@ def scan_page_prothomalo(link, keep_content=True):
             data_dict['description'] = desc if description else description
     except:
         print("Error while scraping!")
+        return {}
     return data_dict
 
 
