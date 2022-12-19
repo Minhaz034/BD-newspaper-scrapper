@@ -1,0 +1,11 @@
+pandas==1.5.2
+selenium==4.5.0
+bs4==0.0.1
+deep_translator==1.9.0
+transformers==4.22.2
+nltk==3.7
+undetected_chromedriver==3.1.6
+chromedriver_autoinstaller==0.4.0
+geckodriver_autoinstaller==0.1.0
+torch==1.12.1
+requests

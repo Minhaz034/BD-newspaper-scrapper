@@ -24,7 +24,7 @@ import pyLDAvis.gensim_models
 import gensim, spacy, logging, warnings
 import gensim.corpora as corpora
 import nltk
-from gensim.utils import  simple_preprocess
+from gensim.utils import simple_preprocess
 from gensim.models import CoherenceModel
 # import matplotlib.pyplot as plt
 from nltk.corpus import stopwords
@@ -33,13 +33,8 @@ import undetected_chromedriver as uc
 nltk.download('stopwords')
 warnings.filterwarnings("ignore",category=DeprecationWarning)
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.ERROR)
-
-
 my_api = "15c5418e83130ba091ea4d07875a7517"
-
-
 # trans_b2e = GoogleTranslator(source='bn', target='en')
-
 
 def get_sentiment(raw_inputs, model_path="./bertweet-base-sentiment-analysis"):
     print(f"{torch.cuda.device_count()} GPU available")
