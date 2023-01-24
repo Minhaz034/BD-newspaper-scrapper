@@ -177,7 +177,7 @@ def main(browser='Chrome', headless=False, search_key="এসিআই"):
 
     translate = True
     news_data_df = pd.DataFrame()
-    for name in NAMES[1:5]:
+    for name in NAMES[1:11]:
         news_df = get_news.extract(name, google_news=True, max_news=20, keep_content=True )
         # print(news_df)
         if translate:
@@ -188,7 +188,7 @@ def main(browser='Chrome', headless=False, search_key="এসিআই"):
         #     news_data_df.to_csv("./data/temp1.csv", index=False)
 
     get_news.close_browser()
-    return news_df
+    return news_data_df
 
 
 if __name__ == '__main__':

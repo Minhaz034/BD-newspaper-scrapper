@@ -34,6 +34,13 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 my_api = "15c5418e83130ba091ea4d07875a7517"
 # trans_b2e = GoogleTranslator(source='bn', target='en')
 bn2en = GoogleTranslator(source='bn', target='en')
+EMPTY_DICT = {'newspaper': 'inqilab',
+            'link': None,
+            'language': 'bn',
+            'date': None,
+            'section': None,
+            'source': None,
+            'headline': None}
 
 def translate_news(news_df):
     if news_df.language[0] == 'en':
@@ -274,12 +281,13 @@ def scan_page_jaijaidin(link, keep_content=True):
 def scan_page_inqilab(link, keep_content=True):
     page_source = requests.get(link).text
     page_html = BeautifulSoup(page_source, features="html.parser")
-    article = page_html.find('article')
-    sub_heading = article.find('h5')
-    headline = article.find('h1')
-    section = page_html.find('ol', {'class': re.compile(r'breadcrumb')})
+
 
     try:
+        article = page_html.find('article')
+        sub_heading = article.find('h5') if article else None
+        headline = article.find('h1')
+        section = page_html.find('ol', {'class': re.compile(r'breadcrumb')})
         [source, date] = sub_heading.text.strip().split("|") if sub_heading else ['', '']
         data_dict = {
             'newspaper': 'inqilab',
@@ -295,6 +303,7 @@ def scan_page_inqilab(link, keep_content=True):
             data_dict['description'] = description.text.strip() if description else description
     except:
         print("Error in extracting information or advertisement error.")
+        data_dict = EMPTY_DICT
     return data_dict
 
 
@@ -615,6 +624,7 @@ class GetNews:
             scan_page_daily_star,
             scan_page_dhaka_tribune,
             scan_page_tbs,
+
             None]
         formal_names = [
             # 'Newspapers 71',
