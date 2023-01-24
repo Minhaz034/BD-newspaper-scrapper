@@ -9,3 +9,6 @@ chromedriver_autoinstaller==0.4.0
 geckodriver_autoinstaller==0.1.0
 torch==1.12.1
 requests
+pyLDAvis
+gensim
+pandasgui

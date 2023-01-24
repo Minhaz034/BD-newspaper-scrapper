@@ -13,7 +13,7 @@ sample_raw_inputs=["Agricultural machinery is beyond the reach of farmers",
             "Alamgir, who wanted to teach in exchange for rice, got a job in ACI Logistics Limited",
             "Job opportunities in ACI Group with attractive salary"]
 model_path ="./bertweet-base-sentiment-analysis"
-
+TRANSLATOR = GoogleTranslator(source='bn', target='en')
 
 def get_sentiment(raw_inputs, model_path ="./bertweet-base-sentiment-analysis" ):
     print(f"{torch.cuda.device_count()} GPU available")
@@ -53,7 +53,7 @@ def get_sentiment(raw_inputs, model_path ="./bertweet-base-sentiment-analysis" )
 
 
 if __name__ == '__main__':
-    df = pd.read_csv("./outputs.csv")
+    df = pd.read_csv("./data/all_newspaper_title.csv")
     # print(df['headline'])
     # single_detection(news_df.date[i], api_key="15c5418e83130ba091ea4d07875a7517")
     sentiments = []
@@ -62,18 +62,20 @@ if __name__ == '__main__':
 
     for index,language in enumerate(df['language']):
         if language == 'bangla':
-            headline =  GoogleTranslator(source='bn', target='en').translate(text=df.loc[index]['headline'])
+            headline = TRANSLATOR.translate(text=df.loc[index]['headline'])
             headlines.append(headline)
             # sentiment = get_sentiment(headline)
             # print(sentiment)
         else:
             headlines.append(df.loc[index]['headline'])
 
-    sentiments = get_sentiment(raw_inputs=headlines)
+    _ , sentiments = get_sentiment(raw_inputs=headlines)
+    # print(sentiments)
     df['headline'] = headlines
     df['sentiment'] = sentiments
 
     print(df)
+    df.to_csv("./data/sentiment_news.csv", index=False)
             # print(df.loc[index]['headline'])
 
     # for row in range(df.shape[0]):

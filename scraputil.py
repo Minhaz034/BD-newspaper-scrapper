@@ -18,10 +18,8 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 import re
-# from pprint import pprint
 import pyLDAvis.gensim_models
-# pyLDAvis.enable_notebook()
-import gensim, spacy, logging, warnings
+import gensim, logging, warnings
 import gensim.corpora as corpora
 import nltk
 from gensim.utils import simple_preprocess
@@ -35,6 +33,38 @@ warnings.filterwarnings("ignore",category=DeprecationWarning)
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.ERROR)
 my_api = "15c5418e83130ba091ea4d07875a7517"
 # trans_b2e = GoogleTranslator(source='bn', target='en')
+bn2en = GoogleTranslator(source='bn', target='en')
+
+def translate_news(news_df):
+    if news_df.language[0] == 'en':
+        return news_df
+    else:
+        for i in news_df.index:
+            try:
+                news_df.date.at[i] = single_detection(news_df.date[i], api_key="15c5418e83130ba091ea4d07875a7517")
+            except:
+                pass
+            try:
+
+                news_df.section.at[i] = bn2en.translate(news_df.section[i])
+            except:
+                pass
+            try:
+                news_df.source.at[i] = bn2en.translate(news_df.source[i])
+            except:
+                pass
+            try:
+                news_df.headline.at[i] = bn2en.translate(news_df.headline[i])
+            except:
+                pass
+            try:
+                news_df.description.at[i] = bn2en.translate(news_df.description[i])
+            except:
+                pass
+    return news_df
+
+
+
 
 def get_sentiment(raw_inputs, model_path="./bertweet-base-sentiment-analysis"):
     print(f"{torch.cuda.device_count()} GPU available")
@@ -92,7 +122,7 @@ def scan_page_bhorerkagoj(link, keep_content=True):
             'date': date,
             'section': section.text.strip() if section else '',
             'source': source.text.strip() if source else '',
-            'headline': headline.text.strip()
+            'headline': headline.text.strip() if headline else ''
         }
         if keep_content:
             description = page_html.find('div', {'id': 'content-p'})
@@ -119,7 +149,7 @@ def scan_page_bhorerkagoj_sel(link, keep_content=True):
             'date': date,
             'section': section.text.strip() if section else '',
             'source': source.text.strip() if source else '',
-            'headline': headline.text.strip()
+            'headline': headline.text.strip() if headline else ''
         }
         if keep_content:
             description = page_html.find('div', {'id': 'content-p'})
@@ -132,10 +162,10 @@ def scan_page_bhorerkagoj_sel(link, keep_content=True):
 def scan_page_prothomalo(link, keep_content=True):
     page_source = requests.get(link).text
     page_html = BeautifulSoup(page_source, features="html.parser")
-    date = page_html.find('time', {'datetime': re.compile(r"")})['datetime']
+    date = page_html.find('time', {'datetime': re.compile(r"")})
     page_header = page_html.find('div', {'class': re.compile(r"story-title")})
-    headline = page_header.find('h1')
-    section = page_header.find('a')
+    headline = page_header
+    section = page_header
     source = page_html.find('div', {'class': re.compile(r"contributor")})
     location = page_html.find('span', {'class': re.compile(r"location")})
 
@@ -147,10 +177,10 @@ def scan_page_prothomalo(link, keep_content=True):
             'newspaper': 'prothomalo',
             'link': link,
             'language': 'bn',
-            'date': str(pd.to_datetime(date).date()) if date else None,
-            'section': section.text.strip() if section else '',
+            'date': str(pd.to_datetime(date['datetime']).date()) if date else None,
+            'section': section.find('a').text.strip() if section else '',
             'source': ''.join([source.text if source else ''] + [', ' + location.text if location else '']),
-            'headline': headline.text.strip()
+            'headline': headline.find('h1').text.strip() if headline else ''
         }
         if keep_content:
             desc = ''
@@ -170,21 +200,21 @@ def scan_page_ntv(link, keep_content=True):
     headline = page_html.find('h1', {'itemprop': re.compile(r'headline')})
     section = page_html.find('nav', {'role': re.compile(r"navigation")})
     source = page_html.find('div', {'class': re.compile(r"author")})
-    try:
-        data_dict = {
-            'newspaper': 'ntv',
-            'link': link,
-            'language': 'bn',
-            'date': str(pd.to_datetime(date['content']).date()) if date else '',
-            'section': section.text.strip() if section else '',
-            'source': source.text.strip() if source else '',
-            'headline': headline.text.strip()
-        }
-        if keep_content:
-            description = page_html.find('div', {'class': re.compile(r"^section-content")})
-            data_dict['description'] = description.text.strip() if description else description
-    except:
-        print("Error in extracting information or advertisement error.")
+    # try:
+    data_dict = {
+        'newspaper': 'ntv',
+        'link': link,
+        'language': 'bn',
+        'date': str(pd.to_datetime(date['content']).date()) if date else '',
+        'section': section.text.strip() if section else '',
+        'source': source.text.strip() if source else '',
+        'headline': headline.text.strip() if headline else ''
+    }
+    if keep_content:
+        description = page_html.find('div', {'class': re.compile(r"^section-content")})
+        data_dict['description'] = description.text.strip() if description else description
+    # except:
+    #     print("Error in extracting information or advertisement error.")
     return data_dict
 
 
@@ -192,7 +222,7 @@ def scan_page_kaler_kantho(link, keep_content=True):
     page_source = requests.get(link).text
     page_html = BeautifulSoup(page_source, features="html.parser")
     date = page_html.find('meta', {'property': re.compile(r'time')})
-    headline = page_html.find('div', {'class': re.compile(r'details')}).find('h2')
+    headline = page_html.find('div', {'class': re.compile(r'details')})
     section = page_html.find('p', {'class': re.compile(r"author")})
     source = page_html.find('p', {'class': re.compile(r"author")})
 
@@ -204,7 +234,7 @@ def scan_page_kaler_kantho(link, keep_content=True):
             'date': str(pd.to_datetime(date['content'][:10]).date()) if date else '',
             'section': section.text.strip() if section else '',
             'source': source.text.strip() if source else '',
-            'headline': headline.text.strip()
+            'headline': headline.find('h2').text.strip() if headline else ''
         }
         if keep_content:
             description = page_html.find('div', {'class': re.compile(r"some-class-name2")})
@@ -258,7 +288,7 @@ def scan_page_inqilab(link, keep_content=True):
             'date': date.strip(),
             'section': section.find('li', {'class': "active"}).findPrevious('li').text.strip() if section else '',
             'source': source.strip(),
-            'headline': headline.text.strip()
+            'headline': headline.text.strip() if headline else ''
         }
         if keep_content:
             description = page_html.find('div', {'id': re.compile(r"news_content")})
@@ -495,7 +525,7 @@ class GetNews:
         self.driver.quit()
 
     def translate_news(self, news_df):
-        if news_df.language[0] == 'en':
+        if news_df.empty or news_df.language[0] == 'en':
             return news_df
         else:
             for i in news_df.index:
@@ -610,16 +640,16 @@ class GetNews:
         newspaper = pd.DataFrame(newspaper, index=columns)
         return newspaper
 
-    def extract(self, name="bhorerkagoj", google_news=False, pages=1, keep_content=False):
+    def extract(self, name="bhorerkagoj", google_news=False, pages=1, max_news=25, keep_content=False):
         self.search_key = self.bn2en.translate(self.search_key) if self.newspaper_map[
                                                                        name].language == 'en' else self.search_key
         if google_news:
-            scraped_df = self.search_google_news(name, keep_content)
+            scraped_df = self.search_google_news(name, keep_content, max_news)
         else:
             scraped_df = self.newspaper_map[name].fn(pages, keep_content)
         return scraped_df
 
-    def search_google_news(self, name='prothomalo', keep_content=False):
+    def search_google_news(self, name='prothomalo', keep_content=False, max_news=25):
         extn = "&hl=en-BD&gl=BD&ceid=BD:en" if self.newspaper_map[name].language == 'en' else "&hl=bn&gl=BD&ceid=BD:bn"
         search_link = "https://news.google.com/search?q=site:" + self.newspaper_map[
             name].link + '%20"' + self.search_key + '"' + extn
@@ -644,6 +674,8 @@ class GetNews:
                 page_dict['date'] = pd.to_datetime(date.get_attribute('datetime'))
                 page_dict['headline'] = headline.text.strip()
                 scrap_df.append(page_dict)
+                if j >= max_news:
+                    break
 
         scrap_df = pd.DataFrame(scrap_df)
         return scrap_df

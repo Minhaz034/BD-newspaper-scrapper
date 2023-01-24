@@ -171,23 +171,26 @@ NAMES = [ # 'newspapers71',
          'tbsnews',
          'thefinancialexpress']
 
-
-if __name__ == '__main__':
-    get_news = GetNews(browser='Chrome', headless=False, search_key="এসিআই")
+def main(browser='Chrome', headless=False, search_key="এসিআই"):
+    get_news = GetNews(browser=browser, headless=headless, search_key=search_key)
     get_news.select_browser('Chrome')
 
-    translate = False
+    translate = True
     news_data_df = pd.DataFrame()
-    for name in NAMES[-1:]:
-
-        try:
-            news_df = get_news.extract(name, google_news=False, keep_content=False)
-            if translate:
-                news_df = get_news.translate_news(news_df)
-            news_df['sentiment'] = get_sentiment(news_df.headline.to_list())
-            news_data_df = pd.concat((news_data_df, news_df), axis=0, ignore_index=True)
-        except:
-            news_data_df.to_csv("./data/temp1.csv", index=False)
+    for name in NAMES[1:5]:
+        news_df = get_news.extract(name, google_news=True, max_news=20, keep_content=True )
+        # print(news_df)
+        if translate:
+            news_df = get_news.translate_news(news_df)
+        news_df['sentiment'] = get_sentiment(news_df.headline.to_list())
+        news_data_df = pd.concat((news_data_df, news_df), axis=0, ignore_index=True)
+        # except:
+        #     news_data_df.to_csv("./data/temp1.csv", index=False)
 
     get_news.close_browser()
-    news_data_df.to_csv("./outputs.csv", index=False)
+    return news_df
+
+
+if __name__ == '__main__':
+    newspaper_df = main()
+    newspaper_df.to_csv("./outputs.csv", index=False)
