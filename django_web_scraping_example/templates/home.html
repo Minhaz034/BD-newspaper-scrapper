@@ -1,0 +1,36 @@
+# home.html
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="row">
+    <table>
+        <tbody>
+            {% for a in articles %}
+            <tr>
+                <td>
+                    <a href="{{ a.link }}">{{ 'news_link' }}</a>
+                </td>
+                <td>
+                    <p>
+                        Source: {{ a.newspaper }}
+                    </p>
+                </td>
+                <td>
+                    <p>
+                        Published: {{ a.date }}
+                    </p>
+                </td>
+                <td>
+                    <p>
+                        Scraped: {{ a.headline }}
+                    </p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock content %}
